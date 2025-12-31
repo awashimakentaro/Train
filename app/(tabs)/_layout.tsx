@@ -1,33 +1,55 @@
+/**
+ * app/(tabs)/_layout.tsx
+ *
+ * 【責務】
+ * Expo Router のタブグループを定義し、各タブ画面（メニュー/身体データ/カロリー）のメタ情報とカスタムタブバーを設定する。
+ *
+ * 【使用箇所】
+ * - app/_layout.tsx から Stack 経由で読み込まれ、タブ遷移を提供する。
+ *
+ * 【やらないこと】
+ * - 各画面の UI/状態管理
+ * - タブ以外のナビゲーション構築
+ *
+ * 【他ファイルとの関係】
+ * - components/navigation/MainTabBar.tsx を利用してタブバーを描画する。
+ */
+
 import { Tabs } from 'expo-router';
-import React from 'react';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { MainTabBar } from '@/components/navigation/MainTabBar';
 
+/**
+ * TabLayout
+ *
+ * 【処理概要】
+ * 3 つのタブ画面（メニュー / 身体データ / カロリー）を登録し、
+ * タイトルやアクセシビリティラベルを付与する。
+ *
+ * 【呼び出し元】
+ * Expo Router により app/_layout.tsx から自動的に利用される。
+ *
+ * 【入力 / 出力】
+ * 引数なし / Tabs コンポーネント。
+ *
+ * 【副作用】
+ * なし。
+ */
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
+      tabBar={props => <MainTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
       }}>
+      <Tabs.Screen name="menu" options={{ title: 'メニュー', tabBarAccessibilityLabel: 'メニュータブ' }} />
+      <Tabs.Screen name="index" options={{ title: '身体データ', tabBarAccessibilityLabel: '身体データタブ' }} />
+      <Tabs.Screen name="calories" options={{ title: 'カロリー', tabBarAccessibilityLabel: 'カロリータブ' }} />
       <Tabs.Screen
-        name="index"
+        name="training-session"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          href: null,
+          title: 'トレーニング',
         }}
       />
     </Tabs>
