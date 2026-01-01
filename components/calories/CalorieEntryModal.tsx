@@ -27,6 +27,8 @@ interface CalorieEntryModalProps {
   onSubmit: (payload: { amount: number; label: string; durationMinutes?: number }) => void;
 }
 
+const placeholderColor = '#94a3b8';
+
 /**
  * CalorieEntryModal
  *
@@ -87,14 +89,14 @@ export function CalorieEntryModal({ visible, type, onClose, onSubmit }: CalorieE
             placeholder="300"
             keyboardType="number-pad"
             style={styles.input}
-            placeholderTextColor={tokens.palette.textTertiary}
+            placeholderTextColor={placeholderColor}
           />
           <TextInput
             value={label}
             onChangeText={setLabel}
             placeholder={type === 'intake' ? '食事' : 'ランニング'}
             style={styles.input}
-            placeholderTextColor={tokens.palette.textTertiary}
+            placeholderTextColor={placeholderColor}
           />
           {type === 'burn' ? (
             <TextInput
@@ -103,7 +105,7 @@ export function CalorieEntryModal({ visible, type, onClose, onSubmit }: CalorieE
               placeholder="トレーニング時間 (分)"
               keyboardType="number-pad"
               style={styles.input}
-              placeholderTextColor={tokens.palette.textTertiary}
+              placeholderTextColor={placeholderColor}
             />
           ) : null}
           <View style={styles.buttonRow}>
@@ -123,29 +125,34 @@ export function CalorieEntryModal({ visible, type, onClose, onSubmit }: CalorieE
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'rgba(15,23,42,0.45)',
     justifyContent: 'center',
     padding: tokens.spacing.lg,
   },
   sheet: {
-    backgroundColor: tokens.palette.backgroundElevated,
+    backgroundColor: '#fff',
     borderRadius: tokens.radii.lg,
     padding: tokens.spacing.lg,
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
   },
   title: {
-    color: tokens.palette.textPrimary,
+    color: '#0f172a',
     fontSize: tokens.typography.subtitle,
     fontWeight: tokens.typography.weightSemiBold,
     marginBottom: tokens.spacing.md,
   },
   input: {
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
     borderRadius: tokens.radii.md,
     padding: tokens.spacing.md,
-    color: tokens.palette.textPrimary,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
     marginBottom: tokens.spacing.md,
   },
   buttonRow: {
@@ -160,14 +167,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondary: {
-    borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    backgroundColor: '#f1f5f9',
   },
   secondaryText: {
-    color: tokens.palette.textSecondary,
+    color: '#475569',
   },
   primary: {
-    backgroundColor: tokens.palette.accentPink,
+    backgroundColor: '#f97316',
+    shadowColor: '#f97316',
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
   },
   primaryText: {
     color: '#fff',

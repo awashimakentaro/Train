@@ -17,6 +17,8 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { LinearGradient } from 'expo-linear-gradient';
+
 import { tokens } from '@/constants/design-tokens';
 
 export interface DraftExercisePayload {
@@ -125,12 +127,12 @@ export function CreateMenuModal({ visible, onClose, onCreate }: CreateMenuModalP
       }}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
-          <View style={styles.header}>
+          <LinearGradient colors={['#a855f7', '#ec4899']} style={styles.header}>
             <Text style={styles.headerTitle}>メニュー管理</Text>
             <Pressable onPress={() => { resetModal(); onClose(); }} accessibilityRole="button">
               <Text style={styles.closeText}>×</Text>
             </Pressable>
-          </View>
+          </LinearGradient>
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <View style={styles.fieldBlock}>
               <Text style={styles.label}>メニュー名</Text>
@@ -160,7 +162,7 @@ export function CreateMenuModal({ visible, onClose, onCreate }: CreateMenuModalP
                       <View>
                         <Text style={styles.exerciseTitle}>{exercise.name}</Text>
                         <Text style={styles.exerciseMeta}>
-                          {exercise.sets}セット / {exercise.reps}レップ / 休憩 {exercise.restSeconds}s / トレ {exercise.trainingSeconds}s / {exercise.weight}kg
+                          重量 {exercise.weight}kg / {exercise.sets}セット / 休憩 {exercise.restSeconds}s / 実施 {exercise.trainingSeconds}s
                         </Text>
                       </View>
                       <Pressable onPress={() => removeDraft(index)} accessibilityRole="button">
@@ -174,30 +176,15 @@ export function CreateMenuModal({ visible, onClose, onCreate }: CreateMenuModalP
             {isAdding ? (
               <View style={styles.addForm}>
                 <Text style={styles.addFormTitle}>種目を追加</Text>
-                <TextInput
-                  value={editingExercise.name}
-                  onChangeText={text => setEditingExercise(prev => ({ ...prev, name: text }))}
-                  placeholder="種目名"
-                  placeholderTextColor={tokens.palette.textTertiary}
-                  style={styles.textInput}
-                />
                 <View style={styles.inlineInputs}>
                   <View style={styles.inlineField}>
-                    <Text style={styles.inlineLabel}>セット</Text>
+                    <Text style={styles.inlineLabel}>種目名</Text>
                     <TextInput
-                      value={String(editingExercise.sets)}
-                      onChangeText={text => setEditingExercise(prev => ({ ...prev, sets: Number(text) || 0 }))}
-                      keyboardType="number-pad"
-                      style={styles.inlineInput}
-                    />
-                  </View>
-                  <View style={styles.inlineField}>
-                    <Text style={styles.inlineLabel}>レップ</Text>
-                    <TextInput
-                      value={String(editingExercise.reps)}
-                      onChangeText={text => setEditingExercise(prev => ({ ...prev, reps: Number(text) || 0 }))}
-                      keyboardType="number-pad"
-                      style={styles.inlineInput}
+                      value={editingExercise.name}
+                      onChangeText={text => setEditingExercise(prev => ({ ...prev, name: text }))}
+                      placeholder="ベンチプレス"
+                      placeholderTextColor={tokens.palette.textTertiary}
+                      style={styles.textInput}
                     />
                   </View>
                 </View>
@@ -212,10 +199,10 @@ export function CreateMenuModal({ visible, onClose, onCreate }: CreateMenuModalP
                     />
                   </View>
                   <View style={styles.inlineField}>
-                    <Text style={styles.inlineLabel}>休憩 (秒)</Text>
+                    <Text style={styles.inlineLabel}>セット数</Text>
                     <TextInput
-                      value={String(editingExercise.restSeconds)}
-                      onChangeText={text => setEditingExercise(prev => ({ ...prev, restSeconds: Number(text) || 0 }))}
+                      value={String(editingExercise.sets)}
+                      onChangeText={text => setEditingExercise(prev => ({ ...prev, sets: Number(text) || 0 }))}
                       keyboardType="number-pad"
                       style={styles.inlineInput}
                     />
@@ -223,7 +210,16 @@ export function CreateMenuModal({ visible, onClose, onCreate }: CreateMenuModalP
                 </View>
                 <View style={styles.inlineInputs}>
                   <View style={styles.inlineField}>
-                    <Text style={styles.inlineLabel}>トレーニング時間 (秒)</Text>
+                    <Text style={styles.inlineLabel}>休憩時間 (秒)</Text>
+                    <TextInput
+                      value={String(editingExercise.restSeconds)}
+                      onChangeText={text => setEditingExercise(prev => ({ ...prev, restSeconds: Number(text) || 0 }))}
+                      keyboardType="number-pad"
+                      style={styles.inlineInput}
+                    />
+                  </View>
+                  <View style={styles.inlineField}>
+                    <Text style={styles.inlineLabel}>実施時間 (秒)</Text>
                     <TextInput
                       value={String(editingExercise.trainingSeconds)}
                       onChangeText={text => setEditingExercise(prev => ({ ...prev, trainingSeconds: Number(text) || 0 }))}
@@ -232,19 +228,26 @@ export function CreateMenuModal({ visible, onClose, onCreate }: CreateMenuModalP
                     />
                   </View>
                 </View>
-                <Pressable onPress={addExerciseDraft} style={styles.addConfirmButton} accessibilityRole="button">
-                  <Text style={styles.primaryText}>この種目を追加</Text>
-                </Pressable>
+                <View style={styles.addFormActions}>
+                  <Pressable onPress={addExerciseDraft} style={styles.addConfirmButton} accessibilityRole="button">
+                    <Text style={styles.primaryText}>追加</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setIsAdding(false)} style={styles.addCancelButton} accessibilityRole="button">
+                    <Text style={styles.cancelText}>キャンセル</Text>
+                  </Pressable>
+                </View>
               </View>
             ) : null}
           </ScrollView>
-          <Pressable
-            onPress={handleCreate}
-            disabled={isCreateDisabled}
-            style={[styles.createButton, isCreateDisabled && styles.createButtonDisabled]}
-            accessibilityRole="button">
-            <Text style={styles.createButtonText}>メニューを作成</Text>
-          </Pressable>
+          <LinearGradient colors={['#c084fc', '#ec4899']} style={[styles.createButton, isCreateDisabled && styles.createButtonDisabled]}>
+            <Pressable
+              onPress={handleCreate}
+              disabled={isCreateDisabled}
+              style={styles.createButtonPress}
+              accessibilityRole="button">
+              <Text style={styles.createButtonText}>メニューを作成</Text>
+            </Pressable>
+          </LinearGradient>
         </View>
       </View>
     </Modal>
@@ -259,10 +262,10 @@ const styles = StyleSheet.create({
     padding: tokens.spacing.lg,
   },
   sheet: {
-    backgroundColor: tokens.palette.backgroundElevated,
+    backgroundColor: '#fff',
     borderRadius: tokens.radii.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: '#e2e8f0',
     overflow: 'hidden',
   },
   header: {
@@ -289,16 +292,16 @@ const styles = StyleSheet.create({
     gap: tokens.spacing.sm,
   },
   label: {
-    color: tokens.palette.textPrimary,
+    color: '#0f172a',
     fontSize: tokens.typography.subtitle,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
     borderRadius: tokens.radii.md,
     padding: tokens.spacing.md,
-    color: tokens.palette.textPrimary,
-    backgroundColor: tokens.palette.backgroundCard,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
   },
   rowBetween: {
     flexDirection: 'row',
@@ -313,28 +316,31 @@ const styles = StyleSheet.create({
     marginTop: tokens.spacing.sm,
     padding: tokens.spacing.lg,
     borderRadius: tokens.radii.md,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
   },
   placeholderText: {
-    color: tokens.palette.textSecondary,
+    color: '#94a3b8',
   },
   exerciseChip: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: tokens.palette.backgroundCard,
+    backgroundColor: '#fff',
     borderRadius: tokens.radii.md,
     padding: tokens.spacing.md,
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
   },
   exerciseTitle: {
-    color: tokens.palette.textPrimary,
+    color: '#0f172a',
     fontWeight: tokens.typography.weightSemiBold,
   },
   exerciseMeta: {
-    color: tokens.palette.textSecondary,
+    color: '#475569',
     fontSize: tokens.typography.caption,
   },
   removeText: {
@@ -345,9 +351,9 @@ const styles = StyleSheet.create({
     marginTop: -tokens.spacing.sm,
     padding: tokens.spacing.lg,
     borderRadius: tokens.radii.lg,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#fdf4ff',
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#f0abfc',
     gap: tokens.spacing.sm,
   },
   addFormTitle: {
@@ -362,19 +368,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inlineLabel: {
-    color: tokens.palette.textSecondary,
+    color: '#475569',
     marginBottom: tokens.spacing.xs,
   },
   inlineInput: {
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
     borderRadius: tokens.radii.md,
     padding: tokens.spacing.sm,
-    color: tokens.palette.textPrimary,
-    backgroundColor: tokens.palette.backgroundCard,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
+  },
+  addFormActions: {
+    flexDirection: 'row',
+    gap: tokens.spacing.md,
   },
   addConfirmButton: {
-    backgroundColor: tokens.palette.accentBlue,
+    flex: 1,
+    backgroundColor: '#a855f7',
+    paddingVertical: tokens.spacing.md,
+    borderRadius: tokens.radii.full,
+    alignItems: 'center',
+  },
+  addCancelButton: {
+    flex: 1,
+    backgroundColor: '#e2e8f0',
     paddingVertical: tokens.spacing.md,
     borderRadius: tokens.radii.full,
     alignItems: 'center',
@@ -383,12 +401,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: tokens.typography.weightSemiBold,
   },
+  cancelText: {
+    color: '#475569',
+    fontWeight: tokens.typography.weightMedium,
+  },
   createButton: {
     margin: tokens.spacing.lg,
     marginTop: 0,
-    backgroundColor: tokens.palette.accentPink,
-    paddingVertical: tokens.spacing.md,
     borderRadius: tokens.radii.full,
+  },
+  createButtonPress: {
+    paddingVertical: tokens.spacing.md,
     alignItems: 'center',
   },
   createButtonDisabled: {

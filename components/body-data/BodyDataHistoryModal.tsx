@@ -124,12 +124,12 @@ export function BodyDataHistoryModal({ visible, field, history, onClose, onUpdat
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.title}>{FIELD_LABEL[field]} 履歴</Text>
+            <Text style={styles.title}>{FIELD_LABEL[field]}の履歴</Text>
             <Pressable onPress={onClose} accessibilityRole="button">
-              <Text style={styles.closeText}>閉じる</Text>
+              <Text style={styles.closeText}>×</Text>
             </Pressable>
           </View>
-          <ScrollView contentContainerStyle={{ paddingBottom: tokens.spacing.lg }}>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             {history.map(record => (
               <View key={record.date} style={styles.row}>
                 <View style={styles.rowHeader}>
@@ -162,17 +162,18 @@ export function BodyDataHistoryModal({ visible, field, history, onClose, onUpdat
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     padding: tokens.spacing.lg,
     justifyContent: 'center',
   },
   sheet: {
-    backgroundColor: tokens.palette.backgroundElevated,
-    borderRadius: tokens.radii.lg,
+    backgroundColor: '#fff',
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
     padding: tokens.spacing.lg,
     maxHeight: '90%',
+    gap: tokens.spacing.md,
   },
   sheetHeader: {
     flexDirection: 'row',
@@ -181,17 +182,22 @@ const styles = StyleSheet.create({
     marginBottom: tokens.spacing.md,
   },
   title: {
-    color: tokens.palette.textPrimary,
+    color: '#7c3aed',
     fontSize: tokens.typography.subtitle,
     fontWeight: tokens.typography.weightSemiBold,
   },
   closeText: {
-    color: tokens.palette.textSecondary,
+    color: '#475569',
+    fontSize: tokens.typography.subtitle,
+  },
+  content: {
+    gap: tokens.spacing.sm,
   },
   row: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: tokens.palette.borderMuted,
-    paddingVertical: tokens.spacing.sm,
+    borderRadius: tokens.radii.lg,
+    backgroundColor: '#f8fafc',
+    padding: tokens.spacing.md,
+    gap: tokens.spacing.sm,
   },
   rowHeader: {
     flexDirection: 'row',
@@ -199,11 +205,11 @@ const styles = StyleSheet.create({
     marginBottom: tokens.spacing.xs,
   },
   date: {
-    color: tokens.palette.textPrimary,
+    color: '#0f172a',
     fontWeight: tokens.typography.weightMedium,
   },
   deleteText: {
-    color: tokens.palette.accentRed,
+    color: '#ef4444',
   },
   rowBody: {
     flexDirection: 'row',
@@ -213,19 +219,19 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
     borderRadius: tokens.radii.md,
     padding: tokens.spacing.md,
-    color: tokens.palette.textPrimary,
-    backgroundColor: tokens.palette.backgroundCard,
+    color: '#0f172a',
+    backgroundColor: '#fff',
   },
   unit: {
-    color: tokens.palette.textSecondary,
+    color: '#475569',
   },
   saveButton: {
     paddingHorizontal: tokens.spacing.md,
     paddingVertical: tokens.spacing.sm,
-    backgroundColor: tokens.palette.accentPurple,
+    backgroundColor: '#a855f7',
     borderRadius: tokens.radii.sm,
   },
   saveText: {

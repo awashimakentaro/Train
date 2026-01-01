@@ -16,7 +16,9 @@
 
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 
 import { BodyDataCard } from '@/components/body-data/BodyDataCard';
 import { AddBodyDataModal, BodyDataFormPayload } from '@/components/body-data/AddBodyDataModal';
@@ -126,16 +128,29 @@ export default function BodyScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + tokens.spacing.md }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerLabel}>記録を習慣化しよう</Text>
-            <Text style={styles.headerTitle}>身体データ</Text>
+        <LinearGradient colors={['#3b82f6', '#a855f7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
+          <View style={styles.heroContent}>
+            <View style={styles.heroIcon}>
+              <Feather name="activity" size={22} color="#fff" />
+            </View>
+            <View>
+              <Text style={styles.heroEyebrow}>身体データ</Text>
+              <Text style={styles.heroTitle}>あなたの成長を記録</Text>
+              <Text style={styles.heroSubtitle}>毎日の小さな変化を見逃さない</Text>
+            </View>
+          </View>
+        </LinearGradient>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionInfo}>
+            <Text style={styles.sectionLabel}>データ一覧</Text>
+            <Text style={styles.sectionHint}>最新の身体データカード</Text>
           </View>
           <Pressable
             onPress={() => setAddModalVisible(true)}
-            style={styles.addButton}
+            style={styles.sectionButton}
             accessibilityRole="button">
-            <Text style={styles.addText}>＋ データ入力</Text>
+            <Feather name="plus" size={18} color="#7c3aed" />
+            <Text style={styles.sectionButtonText}>データ入力</Text>
           </Pressable>
         </View>
         <View style={styles.cardList}>
@@ -175,41 +190,83 @@ export default function BodyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: '#fdf4ff',
   },
   scrollContent: {
     padding: tokens.spacing.lg,
     paddingBottom: tokens.spacing.mega,
   },
-  header: {
-    backgroundColor: tokens.palette.backgroundElevated,
-    borderRadius: tokens.radii.lg,
+  heroCard: {
+    borderRadius: 32,
     padding: tokens.spacing.lg,
-    borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    marginBottom: tokens.spacing.xl,
+    shadowColor: '#1e1b4b',
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 18 },
+  },
+  heroContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.md,
+  },
+  heroIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroEyebrow: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: tokens.typography.caption,
+    marginBottom: 4,
+  },
+  heroTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: tokens.typography.weightSemiBold,
+  },
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: tokens.spacing.lg,
+    gap: tokens.spacing.md,
+    marginBottom: tokens.spacing.md,
   },
-  headerLabel: {
-    color: tokens.palette.textTertiary,
+  sectionInfo: {
+    flex: 1,
+  },
+  sectionLabel: {
+    color: '#6d28d9',
+    fontSize: tokens.typography.subtitle,
+    fontWeight: tokens.typography.weightSemiBold,
+  },
+  sectionHint: {
+    color: '#a78bfa',
     fontSize: tokens.typography.caption,
-    marginBottom: tokens.spacing.xs,
+    marginTop: 2,
   },
-  headerTitle: {
-    color: tokens.palette.textPrimary,
-    fontSize: tokens.typography.title,
-    fontWeight: tokens.typography.weightBold,
-  },
-  addButton: {
-    backgroundColor: tokens.palette.accentPurple,
-    paddingHorizontal: tokens.spacing.xl,
-    paddingVertical: tokens.spacing.md,
+  sectionButton: {
+    backgroundColor: '#fff',
     borderRadius: tokens.radii.full,
+    paddingHorizontal: tokens.spacing.lg,
+    paddingVertical: tokens.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.xs,
+    shadowColor: '#7c3aed',
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
   },
-  addText: {
-    color: '#fff',
+  sectionButtonText: {
+    color: '#7c3aed',
     fontWeight: tokens.typography.weightSemiBold,
   },
   cardList: {

@@ -69,72 +69,105 @@ function formatValue(value?: number) {
  * なし。
  */
 function BodyDataCardComponent({ title, value, unit, trend, series, accentColor, onHistoryPress }: BodyDataCardProps) {
-  const trendSign = trend > 0 ? '+' : '';
-  const trendColor = trend >= 0 ? accentColor : tokens.palette.accentBlue;
+  const isPositive = trend > 0;
+  const isNegative = trend < 0;
+  const arrowSymbol = isPositive ? '↗' : isNegative ? '↘' : '→';
+  const trendColor = isPositive ? '#f97316' : isNegative ? '#10b981' : '#94a3b8';
+  const sign = isPositive ? '+' : isNegative ? '-' : '';
+  const delta = Math.abs(trend).toFixed(1);
 
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>{title}</Text>
-        <Pressable onPress={onHistoryPress} style={styles.historyButton} accessibilityRole="button">
+        <Pressable onPress={onHistoryPress} accessibilityRole="button">
           <Text style={styles.historyText}>履歴</Text>
         </Pressable>
       </View>
-      <Text style={[styles.value, { color: accentColor }]}>
-        {formatValue(value)}
-        {unit ? <Text style={styles.unit}>{` ${unit}`}</Text> : null}
-      </Text>
-      <Text style={[styles.trend, { color: trendColor }]}>{`${trendSign}${trend.toFixed(1)} 昨日比`}</Text>
-      <Sparkline values={series} color={accentColor} style={styles.chart} />
+      <View style={styles.contentRow}>
+        <View style={styles.metaBlock}>
+          <View style={styles.valueRow}>
+            <Text style={[styles.value, { color: accentColor }]}>{formatValue(value)}</Text>
+            {unit ? <Text style={styles.unit}>{unit}</Text> : null}
+          </View>
+          <View style={styles.trendRow}>
+            <Text style={[styles.trendArrow, { color: trendColor }]}>{arrowSymbol}</Text>
+            <Text style={[styles.trendValue, { color: trendColor }]}>{`${sign}${delta}`}</Text>
+            <Text style={styles.trendUnit}>昨日比</Text>
+          </View>
+        </View>
+        <Sparkline values={series} color={accentColor} style={styles.chart} width={96} height={32} />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: tokens.palette.backgroundCard,
-    borderRadius: tokens.radii.lg,
+    backgroundColor: '#fff',
+    borderRadius: 28,
     padding: tokens.spacing.lg,
-    marginBottom: tokens.spacing.md,
-    borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    marginBottom: tokens.spacing.lg,
+    shadowColor: '#94a3b8',
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: tokens.spacing.sm,
   },
   title: {
-    color: tokens.palette.textPrimary,
+    color: '#475569',
     fontSize: tokens.typography.subtitle,
     fontWeight: tokens.typography.weightSemiBold,
   },
-  historyButton: {
-    paddingHorizontal: tokens.spacing.md,
-    paddingVertical: tokens.spacing.xs,
-    borderRadius: tokens.radii.full,
-    borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
-  },
   historyText: {
-    color: tokens.palette.textSecondary,
+    color: '#a855f7',
     fontSize: tokens.typography.caption,
   },
+  contentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  metaBlock: {
+    flex: 1,
+    gap: tokens.spacing.sm,
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: tokens.spacing.xs,
+  },
   value: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: tokens.typography.weightBold,
   },
   unit: {
     fontSize: tokens.typography.body,
-    color: tokens.palette.textSecondary,
+    color: '#94a3b8',
   },
-  trend: {
+  trendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  trendArrow: {
+    fontSize: tokens.typography.body,
+  },
+  trendValue: {
+    fontSize: tokens.typography.body,
+    fontWeight: tokens.typography.weightMedium,
+  },
+  trendUnit: {
     fontSize: tokens.typography.caption,
-    marginBottom: tokens.spacing.md,
+    color: '#94a3b8',
   },
   chart: {
-    marginTop: tokens.spacing.sm,
+    marginTop: -tokens.spacing.sm,
   },
 });
 

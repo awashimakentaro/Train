@@ -126,7 +126,7 @@ export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModa
             value={date}
             onChangeText={setDate}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor={tokens.palette.textTertiary}
+            placeholderTextColor="#cbd5f5"
             style={styles.dateInput}
           />
           <ScrollView style={styles.formArea} contentContainerStyle={{ paddingBottom: tokens.spacing.lg }}>
@@ -137,7 +137,7 @@ export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModa
                   value={form[field.key]}
                   onChangeText={text => setForm(prev => ({ ...prev, [field.key]: text }))}
                   placeholder={field.placeholder}
-                  placeholderTextColor={tokens.palette.textTertiary}
+                  placeholderTextColor="#cbd5f5"
                   keyboardType="decimal-pad"
                   style={styles.input}
                 />
@@ -165,31 +165,33 @@ export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModa
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     padding: tokens.spacing.lg,
   },
   sheet: {
-    backgroundColor: tokens.palette.backgroundElevated,
-    borderRadius: tokens.radii.lg,
+    backgroundColor: '#fff',
+    borderRadius: 24,
     padding: tokens.spacing.lg,
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
     maxHeight: '90%',
+    gap: tokens.spacing.sm,
   },
   title: {
-    color: tokens.palette.textPrimary,
+    color: '#7c3aed',
     fontSize: tokens.typography.subtitle,
     fontWeight: tokens.typography.weightSemiBold,
-    marginBottom: tokens.spacing.md,
+    marginBottom: tokens.spacing.sm,
   },
   dateInput: {
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
     borderRadius: tokens.radii.md,
     padding: tokens.spacing.md,
-    color: tokens.palette.textPrimary,
+    color: '#0f172a',
     marginBottom: tokens.spacing.md,
+    backgroundColor: '#f8fafc',
   },
   formArea: {
     maxHeight: 320,
@@ -198,16 +200,16 @@ const styles = StyleSheet.create({
     marginBottom: tokens.spacing.md,
   },
   label: {
-    color: tokens.palette.textSecondary,
+    color: '#475569',
     marginBottom: tokens.spacing.xs,
   },
   input: {
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
     borderRadius: tokens.radii.md,
     padding: tokens.spacing.md,
-    color: tokens.palette.textPrimary,
-    backgroundColor: tokens.palette.backgroundCard,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -222,16 +224,16 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
   },
   secondaryText: {
-    color: tokens.palette.textSecondary,
+    color: '#475569',
   },
   primaryButton: {
-    backgroundColor: tokens.palette.accentPurple,
+    backgroundColor: '#a855f7',
   },
   buttonDisabled: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#e2e8f0',
   },
   primaryText: {
     color: '#fff',

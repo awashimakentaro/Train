@@ -109,7 +109,7 @@ function ExerciseCardComponent({ exercise, onChange, onRemove, onToggle }: Exerc
           <Feather
             name={expanded ? 'chevron-up' : 'chevron-down'}
             size={20}
-            color={tokens.palette.textSecondary}
+            color="#0f172a"
           />
         </Pressable>
       </View>
@@ -142,12 +142,15 @@ function ExerciseCardComponent({ exercise, onChange, onRemove, onToggle }: Exerc
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: tokens.palette.backgroundCard,
+    backgroundColor: '#fff',
     borderRadius: tokens.radii.lg,
     padding: tokens.spacing.lg,
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
     marginBottom: tokens.spacing.lg,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
   },
   headerRow: {
     flexDirection: 'row',
@@ -179,12 +182,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
-    color: tokens.palette.textPrimary,
+    color: '#0f172a',
     fontSize: tokens.typography.subtitle,
     fontWeight: tokens.typography.weightSemiBold,
   },
   meta: {
-    color: tokens.palette.textTertiary,
+    color: '#475569',
     fontSize: tokens.typography.caption,
   },
   fieldGrid: {
@@ -209,12 +212,15 @@ const styles = StyleSheet.create({
   },
   numberInput: {
     flex: 1,
-    color: tokens.palette.textPrimary,
+    color: '#0f172a',
     fontSize: tokens.typography.body,
     paddingVertical: tokens.spacing.sm,
+    backgroundColor: '#f8fafc',
+    borderRadius: tokens.radii.sm,
+    paddingHorizontal: tokens.spacing.xs,
   },
   suffix: {
-    color: tokens.palette.textSecondary,
+    color: '#475569',
     fontSize: tokens.typography.caption,
     marginLeft: tokens.spacing.xs,
   },

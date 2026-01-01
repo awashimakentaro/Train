@@ -117,18 +117,37 @@ export default function MenuScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + tokens.spacing.md }] }>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <LinearGradient colors={['#a855f7', '#ec4899']} style={styles.heroCard}>
-          <View style={styles.heroIconContainer}>
-            <Feather name="activity" size={28} color="white" />
+        <LinearGradient colors={['#7c3aed', '#ec4899']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
+          <View style={styles.heroHeader}>
+            <View style={styles.heroIconContainer}>
+              <Feather name="activity" size={28} color="white" />
+            </View>
+            <View style={styles.heroTextBlock}>
+              <Text style={styles.heroEyebrow}>カスタムプラン</Text>
+              <Text style={styles.heroLabel}>メニューを整えてベストな1日へ</Text>
+              <Text style={styles.heroSubText}>目的に合わせて種目をすぐ呼び出せます</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.heroLabel}>トレーニングメニュー</Text>
-            <Text style={styles.heroSubText}>今日も頑張りましょう！</Text>
+          <View style={styles.heroMetaRow}>
+            <View style={styles.heroChip}>
+              <Feather name="check-circle" size={16} color="#22c55e" />
+              <Text style={styles.heroChipText}>有効 {enabledCount} 種目</Text>
+            </View>
+            <Pressable
+              onPress={() => setShowCreateMenuModal(true)}
+              style={styles.heroCta}
+              accessibilityRole="button">
+              <Feather name="plus" size={18} color="#7c3aed" />
+              <Text style={styles.heroCtaText}>新しいメニュー</Text>
+            </Pressable>
           </View>
         </LinearGradient>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>メニュー選択</Text>
+          <View style={styles.sectionTop}>
+            <Text style={styles.sectionTitle}>メニュー選択</Text>
+            <Text style={styles.sectionCaption}>プリセットから今日のプランを選びます</Text>
+          </View>
           <Pressable
             onPress={() => setShowPresetPicker(true)}
             style={styles.dropdown}
@@ -139,15 +158,6 @@ export default function MenuScreen() {
             </View>
             <Feather name="chevron-down" size={20} color={tokens.palette.textPrimary} />
           </Pressable>
-          <LinearGradient colors={['#6366f1', '#a855f7']} style={styles.newMenuButton}>
-            <Pressable
-              onPress={() => setShowCreateMenuModal(true)}
-              style={styles.newMenuButtonPress}
-              accessibilityRole="button">
-              <Feather name="plus" size={18} color="#fff" />
-              <Text style={styles.newMenuButtonText}>新しいメニューを作成</Text>
-            </Pressable>
-          </LinearGradient>
         </View>
 
         <View style={styles.section}>
@@ -288,41 +298,101 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spacing.mega * 2.5,
   },
   heroCard: {
-    borderRadius: tokens.radii.lg,
+    borderRadius: 32,
     padding: tokens.spacing.lg,
+    marginBottom: tokens.spacing.xl,
+    gap: tokens.spacing.lg,
+    shadowColor: '#4c1d95',
+    shadowOpacity: 0.3,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 18 },
+  },
+  heroHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: tokens.spacing.md,
-    marginBottom: tokens.spacing.lg,
+    alignItems: 'center',
   },
   heroIconContainer: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     padding: tokens.spacing.md,
     borderRadius: tokens.radii.lg,
   },
+  heroTextBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  heroEyebrow: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: tokens.typography.caption,
+    letterSpacing: 0.5,
+  },
   heroLabel: {
     color: '#fff',
-    fontSize: tokens.typography.subtitle,
+    fontSize: 24,
     fontWeight: tokens.typography.weightSemiBold,
   },
   heroSubText: {
     color: 'rgba(255,255,255,0.85)',
-    marginTop: tokens.spacing.xs,
+    marginTop: 2,
+  },
+  heroMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: tokens.spacing.md,
+  },
+  heroChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.xs,
+    backgroundColor: 'rgba(15,23,42,0.25)',
+    borderRadius: tokens.radii.full,
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: tokens.spacing.xs,
+  },
+  heroChipText: {
+    color: '#fff',
+    fontWeight: tokens.typography.weightMedium,
+  },
+  heroCta: {
+    backgroundColor: '#fff',
+    borderRadius: tokens.radii.full,
+    paddingHorizontal: tokens.spacing.lg,
+    paddingVertical: tokens.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.xs,
+    shadowColor: '#a855f7',
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  heroCtaText: {
+    color: '#7c3aed',
+    fontWeight: tokens.typography.weightSemiBold,
   },
   section: {
     marginBottom: tokens.spacing.lg,
     gap: tokens.spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: '#fff',
     borderRadius: tokens.radii.lg,
     padding: tokens.spacing.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.15)',
+    shadowColor: 'rgba(79,70,229,0.15)',
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+  },
+  sectionTop: {
+    gap: tokens.spacing.xs,
   },
   sectionTitle: {
-    color: tokens.palette.textPrimary,
+    color: '#0f172a',
     fontSize: tokens.typography.subtitle,
     fontWeight: tokens.typography.weightSemiBold,
-    marginBottom: tokens.spacing.sm,
+  },
+  sectionCaption: {
+    color: '#94a3b8',
+    fontSize: tokens.typography.caption,
   },
   dropdown: {
     borderRadius: tokens.radii.lg,
@@ -348,13 +418,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: tokens.spacing.md,
     borderRadius: tokens.radii.lg,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.15)',
+    borderColor: '#e0e7ff',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
   },
   presetCardActive: {
-    backgroundColor: '#a855f7',
-    borderColor: 'transparent',
+    backgroundColor: '#fff0fb',
+    borderColor: '#c084fc',
   },
   presetName: {
     color: '#1f2937',
@@ -374,20 +447,6 @@ const styles = StyleSheet.create({
     padding: tokens.spacing.sm,
     borderRadius: tokens.radii.full,
     backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  newMenuButton: {
-    borderRadius: tokens.radii.full,
-  },
-  newMenuButtonPress: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: tokens.spacing.sm,
-    paddingVertical: tokens.spacing.md,
-  },
-  newMenuButtonText: {
-    color: '#fff',
-    fontWeight: tokens.typography.weightSemiBold,
   },
   sectionHeaderRow: {
     flexDirection: 'row',

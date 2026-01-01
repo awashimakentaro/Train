@@ -15,7 +15,7 @@
  * - constants/design-tokens.ts の色設定を間接的に利用する。
  */
 
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
@@ -27,8 +27,8 @@ interface SparklineProps {
   style?: ViewStyle;
 }
 
-const DEFAULT_WIDTH = 140;
-const DEFAULT_HEIGHT = 48;
+const DEFAULT_WIDTH = 120;
+const DEFAULT_HEIGHT = 32;
 
 /**
  * buildPathD
@@ -65,28 +65,6 @@ function buildPathD(values: number[], width: number, height: number) {
 }
 
 /**
- * buildAreaPath
- *
- * 【処理概要】
- * スパークライン下部を塗るためのパス文字列を生成する。
- *
- * 【呼び出し元】
- * Sparkline コンポーネント。
- *
- * 【入力 / 出力】
- * values, width, height / path。
- *
- * 【副作用】
- * なし。
- */
-function buildAreaPath(values: number[], width: number, height: number) {
-  const linePath = buildPathD(values, width, height);
-  if (!linePath) return '';
-  const lastX = width;
-  return `${linePath} L${lastX.toFixed(2)},${height} L0,${height} Z`;
-}
-
-/**
  * Sparkline
  *
  * 【処理概要】
@@ -103,32 +81,36 @@ function buildAreaPath(values: number[], width: number, height: number) {
  */
 function SparklineComponent({ values, color, width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT, style }: SparklineProps) {
   const linePath = buildPathD(values, width, height);
-  const areaPath = buildAreaPath(values, width, height);
+  const gradientId = useMemo(() => `sparkline-${Math.random().toString(36).slice(2, 9)}`, []);
 
   if (!linePath) {
     return <View style={[styles.placeholder, { width, height }, style]} />;
   }
 
   return (
-    <View style={style}>
+    <View style={[styles.container, style]}>
       <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
         <Defs>
-          <LinearGradient id="sparklineGradient" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor={color} stopOpacity={0.6} />
-            <Stop offset="100%" stopColor={color} stopOpacity={0} />
+          <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
+            <Stop offset="0%" stopColor={color} stopOpacity={0.4} />
+            <Stop offset="100%" stopColor={color} stopOpacity={1} />
           </LinearGradient>
         </Defs>
-        {areaPath ? <Path d={areaPath} fill="url(#sparklineGradient)" /> : null}
-        <Path d={linePath} stroke={color} strokeWidth={2.5} fill="none" strokeLinecap="round" />
+        <Path d={linePath} stroke={`url(#${gradientId})`} strokeWidth={4} fill="none" strokeLinecap="round" />
       </Svg>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    borderRadius: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
   placeholder: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(148,163,184,0.2)',
+    borderRadius: 999,
   },
 });
 

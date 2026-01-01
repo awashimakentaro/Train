@@ -179,25 +179,27 @@ const styles = StyleSheet.create({
     padding: tokens.spacing.lg,
   },
   sheet: {
-    backgroundColor: tokens.palette.backgroundElevated,
+    backgroundColor: '#fff',
     borderRadius: tokens.radii.lg,
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
     padding: tokens.spacing.lg,
+    gap: tokens.spacing.sm,
   },
   title: {
-    color: tokens.palette.textPrimary,
+    color: '#0f172a',
     fontSize: tokens.typography.subtitle,
     fontWeight: tokens.typography.weightSemiBold,
-    marginBottom: tokens.spacing.md,
+    marginBottom: tokens.spacing.sm,
   },
   input: {
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#e2e8f0',
     borderRadius: tokens.radii.md,
     padding: tokens.spacing.md,
-    color: tokens.palette.textPrimary,
+    color: '#0f172a',
     marginBottom: tokens.spacing.md,
+    backgroundColor: '#f8fafc',
   },
   row: {
     flexDirection: 'row',
@@ -210,29 +212,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    color: tokens.palette.textSecondary,
+    color: '#475569',
     marginBottom: tokens.spacing.xs,
-  },
-  focusRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: tokens.spacing.sm,
-    marginBottom: tokens.spacing.md,
-  },
-  focusChip: {
-    paddingHorizontal: tokens.spacing.md,
-    paddingVertical: tokens.spacing.xs,
-    borderRadius: tokens.radii.full,
-    borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
-  },
-  focusChipActive: {
-    backgroundColor: tokens.palette.accentBlue,
-    borderColor: tokens.palette.accentBlue,
-  },
-  focusText: {
-    color: tokens.palette.textPrimary,
-    fontSize: tokens.typography.caption,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -246,13 +227,13 @@ const styles = StyleSheet.create({
   },
   secondary: {
     borderWidth: 1,
-    borderColor: tokens.palette.borderMuted,
+    borderColor: '#cbd5f5',
   },
   secondaryText: {
-    color: tokens.palette.textSecondary,
+    color: '#475569',
   },
   primary: {
-    backgroundColor: tokens.palette.accentPurple,
+    backgroundColor: '#a855f7',
   },
   primaryText: {
     color: '#fff',
