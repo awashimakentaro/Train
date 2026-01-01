@@ -16,7 +16,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -42,14 +42,14 @@ import { CalorieEntryType, useCalorieStore } from '@/hooks/useCalorieStore';
  * ストアアクションを呼び出す。
  */
 export default function CaloriesScreen() {
-  const { entries, addEntry, removeEntry, getTodaySummary, getDailySeries } = useCalorieStore();
+  const { entries, addEntry, removeEntry, getTodaySummary, getWeeklyBalanceSeries } = useCalorieStore();
   const [modalType, setModalType] = useState<CalorieEntryType | null>(null);
   const today = new Date();
   const todayIso = today.toISOString().slice(0, 10);
   const [viewDate, setViewDate] = useState(today);
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const todaySummary = getTodaySummary();
-  const weeklyData = getDailySeries(7);
+  const weeklyData = getWeeklyBalanceSeries();
   const insets = useSafeAreaInsets();
   const calendarMatrix = useMemo(() => buildMonthMatrix(viewDate), [viewDate]);
   const selectedEntries = useMemo(
@@ -76,15 +76,27 @@ export default function CaloriesScreen() {
    * 【副作用】
    * ストア更新。
    */
-  const handleSubmit = (payload: { amount: number; label: string; durationMinutes?: number }) => {
+  const handleSubmit = async (payload: { amount: number; label: string; durationMinutes?: number }) => {
     if (!modalType) return;
-    addEntry({
-      ...payload,
-      type: modalType,
-      date: todayIso,
-      category: modalType === 'intake' ? 'meal' : 'activity',
-    });
-    setModalType(null);
+    try {
+      await addEntry({
+        ...payload,
+        type: modalType,
+        date: todayIso,
+        category: modalType === 'intake' ? 'meal' : 'activity',
+      });
+      setModalType(null);
+    } catch (error) {
+      Alert.alert('記録に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    try {
+      await removeEntry(id);
+    } catch (error) {
+      Alert.alert('削除に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    }
   };
 
   return (
@@ -126,7 +138,7 @@ export default function CaloriesScreen() {
         </View>
 
         <View style={styles.chartCard}>
-          <Text style={styles.sectionTitle}>7日間の推移</Text>
+          <Text style={styles.sectionTitle}>7日間の収支推移</Text>
           <WeeklyLineChart data={weeklyData} />
         </View>
 
@@ -145,7 +157,7 @@ export default function CaloriesScreen() {
                   {entry.durationMinutes ? (
                     <Text style={styles.trainingDuration}>{entry.durationMinutes} 分</Text>
                   ) : null}
-                  <Pressable onPress={() => removeEntry(entry.id)}>
+                  <Pressable onPress={() => handleRemove(entry.id)}>
                     <Text style={styles.deleteText}>削除</Text>
                   </Pressable>
                 </View>
@@ -217,7 +229,7 @@ export default function CaloriesScreen() {
                     <Text style={entry.type === 'intake' ? styles.intakeValue : styles.burnValue}>
                       {entry.type === 'intake' ? '+' : '-'}{entry.amount} kcal
                     </Text>
-                    <Pressable onPress={() => removeEntry(entry.id)}>
+                    <Pressable onPress={() => handleRemove(entry.id)}>
                       <Text style={styles.deleteText}>削除</Text>
                     </Pressable>
                   </View>
@@ -458,25 +470,26 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spacing.sm,
   },
   entryLabel: {
-    color: tokens.palette.textPrimary,
+    color: '#1f2937',
+    fontWeight: tokens.typography.weightMedium,
   },
   entryMeta: {
-    color: tokens.palette.textTertiary,
+    color: '#475569',
     fontSize: tokens.typography.caption,
   },
   entryActions: {
     alignItems: 'flex-end',
   },
   intakeValue: {
-    color: tokens.palette.accentBlue,
+    color: '#16a34a',
     fontWeight: tokens.typography.weightMedium,
   },
   burnValue: {
-    color: tokens.palette.accentOrange,
+    color: '#ea580c',
     fontWeight: tokens.typography.weightMedium,
   },
   deleteText: {
-    color: tokens.palette.textSecondary,
+    color: '#94a3b8',
     fontSize: tokens.typography.caption,
   },
   emptyText: {

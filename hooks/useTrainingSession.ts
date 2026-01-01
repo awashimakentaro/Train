@@ -87,7 +87,14 @@ export type TrainingSessionState = TrainingSessionSlice & TrainingSessionActions
  * なし。
  */
 function createSessionId() {
-  return `session_${Date.now()}`;
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 /**
@@ -206,14 +213,19 @@ function finalizeSession(state: TrainingSessionSlice): TrainingSessionSlice {
   const finishedAt = new Date().toISOString();
   const log = createSessionLog(state, finishedAt);
   const mainName = log.exercises[0]?.name ?? 'セッション';
-  useCalorieStore.getState().addTrainingEntry({
-    sessionId: log.id,
-    calories: log.caloriesBurned,
-    finishedAt,
-    exerciseCount: log.exercises.length,
-    durationSeconds: log.durationSeconds,
-    label: log.exercises.length > 1 ? `${mainName} 他${log.exercises.length - 1}種目` : mainName,
-  });
+  useCalorieStore
+    .getState()
+    .addTrainingEntry({
+      sessionId: log.id,
+      calories: log.caloriesBurned,
+      finishedAt,
+      exerciseCount: log.exercises.length,
+      durationSeconds: log.durationSeconds,
+      label: log.exercises.length > 1 ? `${mainName} 他${log.exercises.length - 1}種目` : mainName,
+    })
+    .catch(error => {
+      console.error('[training] addTrainingEntry failed', error);
+    });
 
   return {
     ...state,

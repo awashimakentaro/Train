@@ -2,21 +2,24 @@
  * hooks/useMenuPresetStore.ts
  *
  * 【責務】
- * トレーニングメニュー（プリセット）を管理し、種目の追加・更新・削除・有効/無効切り替えを提供する。
+ * Supabase 上のトレーニングメニュー/種目テーブルと同期しながら、UI から扱いやすい Zustand ストア API を提供する。
  *
  * 【使用箇所】
- * - メニュータブのカード編集
- * - トレーニングタブでの実行対象抽出
+ * - app/(tabs)/menu.tsx での CRUD 操作
+ * - hooks/useTrainingSession.ts からの種目参照
  *
  * 【やらないこと】
- * - 複数ユーザーの管理
- * - 外部永続化
+ * - Auth 管理
+ * - カロリー計算などドメイン外ロジック
  *
  * 【他ファイルとの関係】
- * - hooks/useTrainingSession.ts が有効な種目リストを参照する。
+ * - lib/supabaseClient.ts を利用して CRUD を実行する。
  */
 
 import { create } from 'zustand';
+
+import { supabase } from '@/lib/supabaseClient';
+import type { ExerciseRow, MenuPresetRow } from '@/types/supabase';
 
 export interface Exercise {
   id: string;
@@ -30,6 +33,7 @@ export interface Exercise {
   youtubeUrl?: string;
   focusArea: 'push' | 'pull' | 'legs' | 'core';
   enabled: boolean;
+  orderIndex: number;
 }
 
 export interface MenuPreset {
@@ -42,39 +46,21 @@ export interface MenuPreset {
 interface MenuPresetState {
   presets: MenuPreset[];
   activePresetId: string;
+  userId: string | null;
+  loading: boolean;
+  error?: string;
+  hasInitialized: boolean;
+  initialize: (userId: string) => Promise<void>;
   getActivePreset: () => MenuPreset;
   setActivePreset: (id: string) => void;
-  createPreset: (payload: { name: string; description?: string; exercises?: Omit<Exercise, 'id'>[] }) => string;
-  deletePreset: (id: string) => void;
-  renamePreset: (id: string, name: string) => void;
-  addExercise: (exercise: Omit<Exercise, 'id'>) => void;
-  updateExercise: (id: string, updates: Partial<Exercise>) => void;
-  removeExercise: (id: string) => void;
-  toggleExercise: (id: string) => void;
-  reorderExercise: (sourceIndex: number, targetIndex: number) => void;
-}
-
-/**
- * createId
- *
- * 【処理概要】
- * Math.random を利用して短い一意 ID を生成する。
- *
- * 【呼び出し元】
- * addExercise。
- *
- * 【入力 / 出力】
- * なし / string。
- *
- * 【副作用】
- * なし。
- */
-function createId() {
-  return `ex_${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function createPresetId() {
-  return `preset_${Math.random().toString(36).slice(2, 9)}`;
+  createPreset: (payload: { name: string; description?: string; exercises?: Omit<Exercise, 'id' | 'orderIndex'>[] }) => Promise<string>;
+  deletePreset: (id: string) => Promise<void>;
+  renamePreset: (id: string, name: string) => Promise<void>;
+  addExercise: (exercise: Omit<Exercise, 'id' | 'orderIndex'>) => Promise<void>;
+  updateExercise: (id: string, updates: Partial<Exercise>) => Promise<void>;
+  removeExercise: (id: string) => Promise<void>;
+  toggleExercise: (id: string) => Promise<void>;
+  reorderExercise: (sourceIndex: number, targetIndex: number) => Promise<void>;
 }
 
 const EMPTY_PRESET: MenuPreset = {
@@ -83,158 +69,224 @@ const EMPTY_PRESET: MenuPreset = {
   exercises: [],
 };
 
-/**
- * useMenuPresetStore
- *
- * 【処理概要】
- * プリセットと種目の CRUD を提供する Zustand ストアを作成する。
- *
- * 【呼び出し元】
- * メニュータブやトレーニングタブ。
- *
- * 【入力 / 出力】
- * なし / Zustand フック。
- *
- * 【副作用】
- * 内部状態を書き換える。
- */
+function mapExerciseRow(row: ExerciseRow): Exercise {
+  return {
+    id: row.id,
+    name: row.name,
+    sets: row.sets,
+    reps: row.reps,
+    weight: row.weight,
+    restSeconds: row.rest_seconds,
+    trainingSeconds: row.training_seconds,
+    note: row.note ?? undefined,
+    youtubeUrl: row.youtube_url ?? undefined,
+    focusArea: row.focus_area,
+    enabled: row.enabled,
+    orderIndex: row.order_index,
+  } satisfies Exercise;
+}
+
+function mapPresetRow(row: MenuPresetRow): MenuPreset {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? undefined,
+    exercises: (row.exercises ?? []).map(mapExerciseRow).sort((a, b) => a.orderIndex - b.orderIndex),
+  } satisfies MenuPreset;
+}
+
 export const useMenuPresetStore = create<MenuPresetState>((set, get) => ({
   presets: [],
   activePresetId: '',
-  /**
-   * getActivePreset
-   *
-   * 【処理概要】
-   * activePresetId に一致するプリセットを返し、見つからない場合は最初の要素を返却する。
-   *
-   * 【呼び出し元】
-   * メニュー画面やトレーニングセッション開始時。
-   *
-   * 【入力 / 出力】
-   * なし / MenuPreset。
-   *
-   * 【副作用】
-   * なし。
-   */
+  userId: null,
+  loading: false,
+  error: undefined,
+  hasInitialized: false,
+  async initialize(userId) {
+    if (get().hasInitialized && get().userId === userId) return;
+    set({ loading: true, userId });
+    const { data, error } = await supabase
+      .from('menu_presets')
+      .select(
+        `id,name,description,created_at,updated_at,
+        exercises:exercises(id,name,sets,reps,weight,rest_seconds,training_seconds,note,youtube_url,focus_area,enabled,order_index,created_at,updated_at,preset_id,user_id)`,
+      )
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .order('order_index', { ascending: true, referencedTable: 'exercises' });
+
+    if (error) {
+      console.error('[supabase] menu_presets fetch failed', error);
+      set({ loading: false, error: error.message });
+      throw new Error(error.message);
+    }
+
+    const mapped = (data ?? []).map(mapPresetRow);
+    set({
+      presets: mapped,
+      activePresetId: mapped[0]?.id ?? '',
+      loading: false,
+      error: undefined,
+      hasInitialized: true,
+    });
+  },
   getActivePreset: () => {
     const { presets, activePresetId } = get();
     return presets.find(preset => preset.id === activePresetId) ?? presets[0] ?? EMPTY_PRESET;
   },
-  /**
-   * setActivePreset
-   *
-   * 【処理概要】
-   * 表示中のプリセット ID を切り替える。
-   */
   setActivePreset: id => {
-    set(state => {
-      if (state.presets.some(preset => preset.id === id)) {
-        return { activePresetId: id };
-      }
-      const fallback = state.presets[0]?.id ?? '';
-      return { activePresetId: fallback };
-    });
-  },
-  /**
-   * createPreset
-   *
-   * 【処理概要】
-   * 新しいプリセットを生成し、必要なら初期種目を付与する。
-   */
-  createPreset: ({ name, description, exercises }) => {
-    const newId = createPresetId();
-    const generatedExercises = (exercises ?? []).map(exercise => ({
-      ...exercise,
-      trainingSeconds: exercise.trainingSeconds ?? 60,
-      id: createId(),
-    }));
     set(state => ({
-      presets: [
-        {
-          id: newId,
-          name,
-          description,
-          exercises: generatedExercises,
-        },
-        ...state.presets,
-      ],
-      activePresetId: newId,
+      activePresetId: state.presets.some(preset => preset.id === id) ? id : state.activePresetId,
     }));
-    return newId;
   },
-  /**
-   * deletePreset
-   *
-   * 【処理概要】
-   * 指定プリセットを一覧から削除し、必要に応じてアクティブ ID を更新する。
-   */
-  deletePreset: id => {
+  async createPreset({ name, description, exercises }) {
+    const userId = get().userId;
+    if (!userId) throw new Error('Supabase ユーザーが未初期化です');
+    const { data, error } = await supabase
+      .from('menu_presets')
+      .insert({ user_id: userId, name, description: description ?? null })
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      console.error('[supabase] create preset failed', error);
+      throw new Error(error?.message ?? 'プリセットの作成に失敗しました');
+    }
+
+    let createdExercises: Exercise[] = [];
+    if (exercises?.length) {
+      const payloads = exercises.map((exercise, index) => ({
+        user_id: userId,
+        preset_id: data.id,
+        name: exercise.name,
+        sets: exercise.sets,
+        reps: exercise.reps,
+        weight: exercise.weight,
+        rest_seconds: exercise.restSeconds,
+        training_seconds: exercise.trainingSeconds,
+        note: exercise.note ?? null,
+        youtube_url: exercise.youtubeUrl ?? null,
+        focus_area: exercise.focusArea,
+        enabled: exercise.enabled,
+        order_index: index,
+      }));
+      const { data: inserted, error: exerciseError } = await supabase.from('exercises').insert(payloads).select('*');
+      if (exerciseError) {
+        console.error('[supabase] create exercises failed', exerciseError);
+        throw new Error(exerciseError.message);
+      }
+      createdExercises = (inserted ?? []).map(mapExerciseRow);
+    }
+
+    const newPreset: MenuPreset = {
+      id: data.id,
+      name,
+      description: description ?? undefined,
+      exercises: createdExercises,
+    };
+
+    set(state => ({ presets: [newPreset, ...state.presets], activePresetId: data.id }));
+    return data.id;
+  },
+  async deletePreset(id) {
+    const userId = get().userId;
+    if (!userId) throw new Error('Supabase ユーザーが未初期化です');
+    const { error } = await supabase
+      .from('menu_presets')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+    if (error) {
+      console.error('[supabase] delete preset failed', error);
+      throw new Error(error.message);
+    }
     set(state => {
       const filtered = state.presets.filter(preset => preset.id !== id);
       const nextActive = state.activePresetId === id ? filtered[0]?.id ?? '' : state.activePresetId;
-      return {
-        presets: filtered,
-        activePresetId: nextActive,
-      };
+      return { presets: filtered, activePresetId: nextActive };
     });
   },
-  /**
-   * renamePreset
-   *
-   * 【処理概要】
-   * プリセットの名称を変更する。
-   */
-  renamePreset: (id, name) => {
+  async renamePreset(id, name) {
+    const userId = get().userId;
+    if (!userId) throw new Error('Supabase ユーザーが未初期化です');
+    const { error } = await supabase
+      .from('menu_presets')
+      .update({ name })
+      .eq('id', id)
+      .eq('user_id', userId);
+    if (error) {
+      console.error('[supabase] rename preset failed', error);
+      throw new Error(error.message);
+    }
     set(state => ({
       presets: state.presets.map(preset => (preset.id === id ? { ...preset, name } : preset)),
     }));
   },
-  /**
-   * addExercise
-   *
-   * 【処理概要】
-   * 現在のアクティブプリセットへ新しい種目を末尾追加する。
-   *
-   * 【呼び出し元】
-   * メニュー画面の新規作成モーダル。
-   *
-   * 【入力 / 出力】
-   * Exercise 情報（id 以外）/ なし。
-   *
-   * 【副作用】
-   * Zustand ストア内のプリセット配列を更新する。
-   */
-  addExercise: exercise => {
-    set(state => {
-      const index = state.presets.findIndex(preset => preset.id === state.activePresetId);
-      if (index === -1) return state;
-      const presets = [...state.presets];
-      const target = presets[index];
-      const newExercise: Exercise = {
-        ...exercise,
-        trainingSeconds: exercise.trainingSeconds ?? 60,
-        id: createId(),
-      };
-      presets[index] = { ...target, exercises: [...target.exercises, newExercise] };
-      return { presets };
-    });
+  async addExercise(exercise) {
+    const state = get();
+    const userId = state.userId;
+    if (!userId) throw new Error('Supabase ユーザーが未初期化です');
+    const preset = state.presets.find(p => p.id === state.activePresetId);
+    if (!preset || preset.id === 'preset_placeholder') throw new Error('プリセットが選択されていません');
+    const { data, error } = await supabase
+      .from('exercises')
+      .insert({
+        user_id: userId,
+        preset_id: preset.id,
+        name: exercise.name,
+        sets: exercise.sets,
+        reps: exercise.reps,
+        weight: exercise.weight,
+        rest_seconds: exercise.restSeconds,
+        training_seconds: exercise.trainingSeconds,
+        note: exercise.note ?? null,
+        youtube_url: exercise.youtubeUrl ?? null,
+        focus_area: exercise.focusArea,
+        enabled: exercise.enabled,
+        order_index: preset.exercises.length,
+      })
+      .select('*')
+      .single();
+    if (error || !data) {
+      console.error('[supabase] add exercise failed', error);
+      throw new Error(error?.message ?? '種目の追加に失敗しました');
+    }
+    const mapped = mapExerciseRow(data);
+    set(current => ({
+      presets: current.presets.map(presetItem =>
+        presetItem.id === preset.id ? { ...presetItem, exercises: [...presetItem.exercises, mapped] } : presetItem,
+      ),
+    }));
   },
-  /**
-   * updateExercise
-   *
-   * 【処理概要】
-   * 指定 ID の種目を見つけ、与えられたフィールドで上書きする。
-   *
-   * 【呼び出し元】
-   * メニュー画面のインライン編集。
-   *
-   * 【入力 / 出力】
-   * id, 更新パッチ / なし。
-   *
-   * 【副作用】
-   * presets 内の該当オブジェクトを書き換える。
-   */
-  updateExercise: (id, updates) => {
+  async updateExercise(id, updates) {
+    const userId = get().userId;
+    if (!userId) throw new Error('Supabase ユーザーが未初期化です');
+    const payload: Partial<ExerciseRow> = {
+      name: updates.name,
+      sets: updates.sets,
+      reps: updates.reps,
+      weight: updates.weight,
+      rest_seconds: updates.restSeconds,
+      training_seconds: updates.trainingSeconds,
+      note: updates.note ?? null,
+      youtube_url: updates.youtubeUrl ?? null,
+      focus_area: updates.focusArea,
+      enabled: updates.enabled,
+    };
+    const sanitized = Object.fromEntries(
+      Object.entries(payload).filter(([, value]) => value !== undefined),
+    );
+    if (Object.keys(sanitized).length) {
+      const { error } = await supabase
+        .from('exercises')
+        .update(sanitized)
+        .eq('id', id)
+        .eq('user_id', userId);
+      if (error) {
+        console.error('[supabase] update exercise failed', error);
+        throw new Error(error.message);
+      }
+    }
     set(state => ({
       presets: state.presets.map(preset => ({
         ...preset,
@@ -244,22 +296,18 @@ export const useMenuPresetStore = create<MenuPresetState>((set, get) => ({
       })),
     }));
   },
-  /**
-   * removeExercise
-   *
-   * 【処理概要】
-   * 指定 ID の種目をプリセットから取り除く。
-   *
-   * 【呼び出し元】
-   * メニュー画面の削除アクション。
-   *
-   * 【入力 / 出力】
-   * id / なし。
-   *
-   * 【副作用】
-   * presets 内配列を再構築する。
-   */
-  removeExercise: id => {
+  async removeExercise(id) {
+    const userId = get().userId;
+    if (!userId) throw new Error('Supabase ユーザーが未初期化です');
+    const { error } = await supabase
+      .from('exercises')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+    if (error) {
+      console.error('[supabase] remove exercise failed', error);
+      throw new Error(error.message);
+    }
     set(state => ({
       presets: state.presets.map(preset => ({
         ...preset,
@@ -267,59 +315,61 @@ export const useMenuPresetStore = create<MenuPresetState>((set, get) => ({
       })),
     }));
   },
-  /**
-   * toggleExercise
-   *
-   * 【処理概要】
-   * 対象種目の enabled フラグを反転させる。
-   *
-   * 【呼び出し元】
-   * メニュー画面のトグルボタン。
-   *
-   * 【入力 / 出力】
-   * id / なし。
-   *
-   * 【副作用】
-   * presets 内の値を変更する。
-   */
-  toggleExercise: id => {
-    set(state => ({
-      presets: state.presets.map(preset => {
-        if (preset.id !== state.activePresetId) return preset;
-        return {
-          ...preset,
-          exercises: preset.exercises.map(exercise =>
-            exercise.id === id ? { ...exercise, enabled: !exercise.enabled } : exercise,
-          ),
-        };
-      }),
+  async toggleExercise(id) {
+    const state = get();
+    const userId = state.userId;
+    if (!userId) throw new Error('Supabase ユーザーが未初期化です');
+    const preset = state.presets.find(p => p.id === state.activePresetId);
+    const target = preset?.exercises.find(exercise => exercise.id === id);
+    if (!target) return;
+    const nextValue = !target.enabled;
+    const { error } = await supabase
+      .from('exercises')
+      .update({ enabled: nextValue })
+      .eq('id', id)
+      .eq('user_id', userId);
+    if (error) {
+      console.error('[supabase] toggle exercise failed', error);
+      throw new Error(error.message);
+    }
+    set(current => ({
+      presets: current.presets.map(presetItem =>
+        presetItem.id === preset?.id
+          ? {
+              ...presetItem,
+              exercises: presetItem.exercises.map(exercise =>
+                exercise.id === id ? { ...exercise, enabled: nextValue } : exercise,
+              ),
+            }
+          : presetItem,
+      ),
     }));
   },
-  /**
-   * reorderExercise
-   *
-   * 【処理概要】
-   * 種目配列内で指定 index の要素を他の位置へ移動する。
-   *
-   * 【呼び出し元】
-   * 将来のドラッグ操作、および UI ボタン。
-   *
-   * 【入力 / 出力】
-   * sourceIndex, targetIndex / なし。
-   *
-   * 【副作用】
-   * アクティブプリセットの順序を更新する。
-   */
-  reorderExercise: (sourceIndex, targetIndex) => {
-    set(state => ({
-      presets: state.presets.map(preset => {
-        if (preset.id !== state.activePresetId) return preset;
-        const exercises = [...preset.exercises];
-        const [moved] = exercises.splice(sourceIndex, 1);
-        if (!moved) return preset;
-        exercises.splice(targetIndex, 0, moved);
-        return { ...preset, exercises };
-      }),
+  async reorderExercise(sourceIndex, targetIndex) {
+    const state = get();
+    const userId = state.userId;
+    if (!userId) throw new Error('Supabase ユーザーが未初期化です');
+    const preset = state.presets.find(p => p.id === state.activePresetId);
+    if (!preset) return;
+    const sequence = [...preset.exercises];
+    const [moved] = sequence.splice(sourceIndex, 1);
+    if (!moved) return;
+    sequence.splice(targetIndex, 0, moved);
+    const updates = sequence.map((exercise, index) => ({ id: exercise.id, order_index: index }));
+    const { error } = await supabase.from('exercises').upsert(updates);
+    if (error) {
+      console.error('[supabase] reorder exercises failed', error);
+      throw new Error(error.message);
+    }
+    set(current => ({
+      presets: current.presets.map(presetItem =>
+        presetItem.id === preset.id
+          ? {
+              ...presetItem,
+              exercises: sequence.map((exercise, index) => ({ ...exercise, orderIndex: index })),
+            }
+          : presetItem,
+      ),
     }));
   },
 }));

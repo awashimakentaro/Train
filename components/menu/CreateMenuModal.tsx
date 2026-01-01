@@ -15,7 +15,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -33,7 +33,7 @@ export interface DraftExercisePayload {
 interface CreateMenuModalProps {
   visible: boolean;
   onClose: () => void;
-  onCreate: (payload: { name: string; exercises: DraftExercisePayload[] }) => void;
+  onCreate: (payload: { name: string; exercises: DraftExercisePayload[] }) => Promise<void>;
 }
 
 const DEFAULT_EXERCISE: DraftExercisePayload = {
@@ -41,7 +41,7 @@ const DEFAULT_EXERCISE: DraftExercisePayload = {
   sets: 3,
   reps: 10,
   weight: 0,
-  restSeconds: 60,
+  restSeconds: 120,
   trainingSeconds: 60,
 };
 
@@ -65,6 +65,7 @@ export function CreateMenuModal({ visible, onClose, onCreate }: CreateMenuModalP
   const [draftExercises, setDraftExercises] = useState<DraftExercisePayload[]>([]);
   const [editingExercise, setEditingExercise] = useState<DraftExercisePayload>(DEFAULT_EXERCISE);
   const [isAdding, setIsAdding] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const isCreateDisabled = useMemo(() => menuName.trim().length === 0 || draftExercises.length === 0, [menuName, draftExercises]);
 
@@ -110,10 +111,18 @@ export function CreateMenuModal({ visible, onClose, onCreate }: CreateMenuModalP
    * 【処理概要】
    * 入力結果を親へ渡し、モーダルを閉じる。
    */
-  const handleCreate = () => {
-    if (isCreateDisabled) return;
-    onCreate({ name: menuName.trim(), exercises: draftExercises });
-    resetModal();
+  const handleCreate = async () => {
+    if (isCreateDisabled || submitting) return;
+    setSubmitting(true);
+    try {
+      await onCreate({ name: menuName.trim(), exercises: draftExercises });
+      resetModal();
+      onClose();
+    } catch (error) {
+      Alert.alert('メニュー作成に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -239,13 +248,15 @@ export function CreateMenuModal({ visible, onClose, onCreate }: CreateMenuModalP
               </View>
             ) : null}
           </ScrollView>
-          <LinearGradient colors={['#c084fc', '#ec4899']} style={[styles.createButton, isCreateDisabled && styles.createButtonDisabled]}>
+          <LinearGradient
+            colors={['#c084fc', '#ec4899']}
+            style={[styles.createButton, (isCreateDisabled || submitting) && styles.createButtonDisabled]}>
             <Pressable
               onPress={handleCreate}
-              disabled={isCreateDisabled}
+              disabled={isCreateDisabled || submitting}
               style={styles.createButtonPress}
               accessibilityRole="button">
-              <Text style={styles.createButtonText}>メニューを作成</Text>
+              <Text style={styles.createButtonText}>{submitting ? '作成中...' : 'メニューを作成'}</Text>
             </Pressable>
           </LinearGradient>
         </View>

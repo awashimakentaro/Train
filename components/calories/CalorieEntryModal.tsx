@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { tokens } from '@/constants/design-tokens';
 import { CalorieEntryType } from '@/hooks/useCalorieStore';
@@ -24,7 +24,7 @@ interface CalorieEntryModalProps {
   visible: boolean;
   type: CalorieEntryType;
   onClose: () => void;
-  onSubmit: (payload: { amount: number; label: string; durationMinutes?: number }) => void;
+  onSubmit: (payload: { amount: number; label: string; durationMinutes?: number }) => Promise<void>;
 }
 
 const placeholderColor = '#94a3b8';
@@ -48,6 +48,7 @@ export function CalorieEntryModal({ visible, type, onClose, onSubmit }: CalorieE
   const [amount, setAmount] = useState('');
   const [label, setLabel] = useState('');
   const [duration, setDuration] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   /**
    * handleSave
@@ -64,18 +65,26 @@ export function CalorieEntryModal({ visible, type, onClose, onSubmit }: CalorieE
    * 【副作用】
    * フォーム状態のリセット。
    */
-  const handleSave = () => {
+  const handleSave = async () => {
     const parsed = Number(amount);
     if (!parsed || !label.trim()) return;
-    onSubmit({
-      amount: parsed,
-      label: label.trim(),
-      durationMinutes: type === 'burn' ? Number(duration) || undefined : undefined,
-    });
-    setAmount('');
-    setLabel('');
-    setDuration('');
-    onClose();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        amount: parsed,
+        label: label.trim(),
+        durationMinutes: type === 'burn' ? Number(duration) || undefined : undefined,
+      });
+      setAmount('');
+      setLabel('');
+      setDuration('');
+      onClose();
+    } catch (error) {
+      Alert.alert('記録に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -112,8 +121,8 @@ export function CalorieEntryModal({ visible, type, onClose, onSubmit }: CalorieE
             <Pressable onPress={onClose} style={[styles.button, styles.secondary]}>
               <Text style={styles.secondaryText}>閉じる</Text>
             </Pressable>
-            <Pressable onPress={handleSave} style={[styles.button, styles.primary]}>
-              <Text style={styles.primaryText}>保存</Text>
+            <Pressable onPress={handleSave} disabled={submitting} style={[styles.button, styles.primary, submitting && styles.primaryDisabled]}>
+              <Text style={styles.primaryText}>{submitting ? '保存中...' : '保存'}</Text>
             </Pressable>
           </View>
         </View>
@@ -178,6 +187,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 8 },
+  },
+  primaryDisabled: {
+    opacity: 0.5,
   },
   primaryText: {
     color: '#fff',

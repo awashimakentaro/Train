@@ -16,14 +16,14 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { tokens } from '@/constants/design-tokens';
 
 interface AddBodyDataModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (payload: BodyDataFormPayload) => void;
+  onSubmit: (payload: BodyDataFormPayload) => Promise<void>;
 }
 
 export interface BodyDataFormPayload {
@@ -84,6 +84,7 @@ function createInitialForm(): Record<FieldKey, string> {
 export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModalProps) {
   const [form, setForm] = useState<Record<FieldKey, string>>(createInitialForm());
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [submitting, setSubmitting] = useState(false);
 
   const isDisabled = useMemo(() => {
     return !Object.values(form).some(value => value.trim().length > 0);
@@ -104,7 +105,7 @@ export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModa
    * 【副作用】
    * フォーム状態のリセット。
    */
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const payload: BodyDataFormPayload = { date };
     FIELD_DEFS.forEach(def => {
       const value = parseFloat(form[def.key] ?? '');
@@ -112,9 +113,17 @@ export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModa
         payload[def.key] = value;
       }
     });
-    onSubmit(payload);
-    setForm(createInitialForm());
-    setDate(new Date().toISOString().slice(0, 10));
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onSubmit(payload);
+      setForm(createInitialForm());
+      setDate(new Date().toISOString().slice(0, 10));
+    } catch (error) {
+      Alert.alert('保存に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -150,10 +159,10 @@ export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModa
             </Pressable>
             <Pressable
               onPress={handleSubmit}
-              disabled={isDisabled}
-              style={[styles.button, isDisabled ? styles.buttonDisabled : styles.primaryButton]}
+              disabled={isDisabled || submitting}
+              style={[styles.button, isDisabled || submitting ? styles.buttonDisabled : styles.primaryButton]}
               accessibilityRole="button">
-              <Text style={styles.primaryText}>保存</Text>
+              <Text style={styles.primaryText}>{submitting ? '保存中...' : '保存'}</Text>
             </Pressable>
           </View>
         </View>

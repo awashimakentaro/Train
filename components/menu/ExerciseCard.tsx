@@ -16,7 +16,7 @@
  */
 
 import { memo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
 import { tokens } from '@/constants/design-tokens';
@@ -24,9 +24,9 @@ import { Exercise } from '@/hooks/useMenuPresetStore';
 
 interface ExerciseCardProps {
   exercise: Exercise;
-  onChange: (id: string, updates: Partial<Exercise>) => void;
-  onRemove: (id: string) => void;
-  onToggle: (id: string) => void;
+  onChange: (id: string, updates: Partial<Exercise>) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+  onToggle: (id: string) => Promise<void>;
 }
 
 const NUMBER_FIELDS: { key: keyof Exercise; label: string; unit?: string }[] = [
@@ -90,13 +90,22 @@ function ExerciseCardComponent({ exercise, onChange, onRemove, onToggle }: Exerc
    */
   const handleInputChange = (key: keyof Exercise, text: string) => {
     const numericValue = Number(text.replace(/[^0-9.]/g, ''));
-    onChange(exercise.id, { [key]: Number.isNaN(numericValue) ? 0 : numericValue } as Partial<Exercise>);
+    onChange(exercise.id, { [key]: Number.isNaN(numericValue) ? 0 : numericValue } as Partial<Exercise>).catch(err => {
+      Alert.alert('更新に失敗しました', err instanceof Error ? err.message : '不明なエラー');
+    });
   };
 
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <Pressable style={styles.headerMain} onPress={() => onToggle(exercise.id)} accessibilityRole="button">
+        <Pressable
+          style={styles.headerMain}
+          onPress={() =>
+            onToggle(exercise.id).catch(err =>
+              Alert.alert('更新に失敗しました', err instanceof Error ? err.message : '不明なエラー'),
+            )
+          }
+          accessibilityRole="button">
           <View style={[styles.checkBox, exercise.enabled && styles.checkBoxActive]}>
             {exercise.enabled ? <Feather name="check" size={20} color="#fff" /> : null}
           </View>
@@ -153,7 +162,14 @@ function ExerciseCardComponent({ exercise, onChange, onRemove, onToggle }: Exerc
               style={styles.linkInput}
             />
           </View>
-          <Pressable onPress={() => onRemove(exercise.id)} style={styles.removeButton} accessibilityRole="button">
+          <Pressable
+            onPress={() =>
+              onRemove(exercise.id).catch(err =>
+                Alert.alert('削除に失敗しました', err instanceof Error ? err.message : '不明なエラー'),
+              )
+            }
+            style={styles.removeButton}
+            accessibilityRole="button">
             <Text style={styles.removeText}>削除</Text>
           </Pressable>
         </>

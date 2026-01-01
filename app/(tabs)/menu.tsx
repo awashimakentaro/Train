@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, Modal } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, Modal, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +26,7 @@ import { CreateExerciseModal } from '@/components/menu/CreateExerciseModal';
 import { CreateMenuModal, DraftExercisePayload } from '@/components/menu/CreateMenuModal';
 import { tokens } from '@/constants/design-tokens';
 import { Exercise, useMenuPresetStore } from '@/hooks/useMenuPresetStore';
+import { useSupabase } from '@/providers/SupabaseProvider';
 import { useTrainingSession } from '@/hooks/useTrainingSession';
 import { useRouter } from 'expo-router';
 
@@ -56,7 +57,9 @@ export default function MenuScreen() {
     updateExercise,
     removeExercise,
     toggleExercise,
+    loading,
   } = useMenuPresetStore();
+  const { signOut } = useSupabase();
   const { startSession, resetSession } = useTrainingSession();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -70,6 +73,13 @@ export default function MenuScreen() {
   const canAddExercises = hasPreset && preset.id !== 'preset_placeholder';
   const enabledCount = preset.exercises.filter(exercise => exercise.enabled).length;
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      Alert.alert('ログアウトに失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    }
+  };
 
   /**
    * handleAddExercise
@@ -86,9 +96,13 @@ export default function MenuScreen() {
    * 【副作用】
    * addExercise を実行。
    */
-  const handleAddExercise = (payload: Omit<Exercise, 'id'>) => {
-    addExercise(payload);
-    setShowExerciseModal(false);
+  const handleAddExercise = async (payload: Omit<Exercise, 'id' | 'orderIndex'>) => {
+    try {
+      await addExercise(payload);
+      setShowExerciseModal(false);
+    } catch (error) {
+      Alert.alert('種目追加に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    }
   };
 
   /**
@@ -97,8 +111,8 @@ export default function MenuScreen() {
    * 【処理概要】
    * メニュー作成モーダルからの入力を受け取り、新しいプリセットとして保存する。
    */
-  const handleCreateMenu = ({ name, exercises }: { name: string; exercises: DraftExercisePayload[] }) => {
-    const normalized: Omit<Exercise, 'id'>[] = exercises.map(ex => ({
+  const handleCreateMenu = async ({ name, exercises }: { name: string; exercises: DraftExercisePayload[] }) => {
+    const normalized: Omit<Exercise, 'id' | 'orderIndex'>[] = exercises.map(ex => ({
       name: ex.name,
       sets: ex.sets,
       reps: ex.reps,
@@ -109,9 +123,13 @@ export default function MenuScreen() {
       note: '',
       enabled: true,
     }));
-    const id = createPreset({ name, exercises: normalized });
-    setActivePreset(id);
-    setShowCreateMenuModal(false);
+    try {
+      const id = await createPreset({ name, exercises: normalized });
+      setActivePreset(id);
+      setShowCreateMenuModal(false);
+    } catch (error) {
+      Alert.alert('メニュー作成に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    }
   };
 
   return (
@@ -133,13 +151,19 @@ export default function MenuScreen() {
               <Feather name="check-circle" size={16} color="#22c55e" />
               <Text style={styles.heroChipText}>有効 {enabledCount} 種目</Text>
             </View>
-            <Pressable
-              onPress={() => setShowCreateMenuModal(true)}
-              style={styles.heroCta}
-              accessibilityRole="button">
-              <Feather name="plus" size={18} color="#7c3aed" />
-              <Text style={styles.heroCtaText}>新しいメニュー</Text>
-            </Pressable>
+            <View style={styles.heroActionGroup}>
+              <Pressable
+                onPress={() => setShowCreateMenuModal(true)}
+                style={styles.heroCta}
+                accessibilityRole="button">
+                <Feather name="plus" size={18} color="#7c3aed" />
+                <Text style={styles.heroCtaText}>新しいメニュー</Text>
+              </Pressable>
+              <Pressable onPress={handleSignOut} style={styles.signOutButton} accessibilityRole="button">
+                <Feather name="log-out" size={16} color="#7c3aed" />
+                <Text style={styles.signOutText}>ログアウト</Text>
+              </Pressable>
+            </View>
           </View>
         </LinearGradient>
 
@@ -173,7 +197,12 @@ export default function MenuScreen() {
               </Pressable>
             ) : null}
           </View>
-          {!hasPreset ? (
+          {loading && !presets.length ? (
+            <View style={styles.emptyState}>
+              <ActivityIndicator color={tokens.palette.accentPurple} />
+              <Text style={[styles.emptyText, { marginTop: tokens.spacing.sm }]}>メニューを読み込み中です...</Text>
+            </View>
+          ) : !hasPreset ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>メニューがありません。「新しいメニューを作成」からスタートしてください。</Text>
             </View>
@@ -272,9 +301,15 @@ export default function MenuScreen() {
                   <Text style={styles.confirmCancelText}>キャンセル</Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => {
-                    deletePreset(confirmDeleteId);
-                    setConfirmDeleteId(null);
+                  onPress={async () => {
+                    if (!confirmDeleteId) return;
+                    try {
+                      await deletePreset(confirmDeleteId);
+                    } catch (error) {
+                      Alert.alert('削除に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+                    } finally {
+                      setConfirmDeleteId(null);
+                    }
                   }}
                   style={[styles.confirmButton, styles.confirmDelete]}>
                   <Text style={styles.confirmDeleteText}>削除</Text>
@@ -341,6 +376,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spacing.md,
   },
+  heroActionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.sm,
+  },
   heroChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -370,6 +410,21 @@ const styles = StyleSheet.create({
   heroCtaText: {
     color: '#7c3aed',
     fontWeight: tokens.typography.weightSemiBold,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: tokens.spacing.sm,
+    borderRadius: tokens.radii.full,
+    borderWidth: 1,
+    borderColor: '#dec9ff',
+  },
+  signOutText: {
+    color: '#7c3aed',
+    fontSize: tokens.typography.caption,
+    fontWeight: tokens.typography.weightMedium,
   },
   section: {
     marginBottom: tokens.spacing.lg,

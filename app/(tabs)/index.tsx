@@ -15,7 +15,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -81,9 +81,13 @@ export default function BodyScreen() {
    * 【副作用】
    * ストア状態の更新。
    */
-  const handleSubmit = (payload: BodyDataFormPayload) => {
-    addEntry(payload);
-    setAddModalVisible(false);
+  const handleSubmit = async (payload: BodyDataFormPayload) => {
+    try {
+      await addEntry(payload);
+      setAddModalVisible(false);
+    } catch (error) {
+      Alert.alert('登録に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    }
   };
 
   /**
@@ -101,9 +105,13 @@ export default function BodyScreen() {
    * 【副作用】
    * updateEntry を実行。
    */
-  const handleHistoryUpdate = (date: string, value: number) => {
+  const handleHistoryUpdate = async (date: string, value: number) => {
     if (!historyField) return;
-    updateEntry(date, { [historyField]: value } as Partial<Record<BodyDataField, number>>);
+    try {
+      await updateEntry(date, { [historyField]: value } as Partial<Record<BodyDataField, number>>);
+    } catch (error) {
+      Alert.alert('更新に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    }
   };
 
   /**
@@ -121,8 +129,12 @@ export default function BodyScreen() {
    * 【副作用】
    * removeEntry を実行。
    */
-  const handleHistoryDelete = (date: string) => {
-    removeEntry(date);
+  const handleHistoryDelete = async (date: string) => {
+    try {
+      await removeEntry(date);
+    } catch (error) {
+      Alert.alert('削除に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    }
   };
 
   return (

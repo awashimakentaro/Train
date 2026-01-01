@@ -26,8 +26,8 @@ interface BodyDataHistoryModalProps {
   field: BodyDataField;
   history: BodyDataRecord[];
   onClose: () => void;
-  onUpdate: (date: string, value: number) => void;
-  onDelete: (date: string) => void;
+  onUpdate: (date: string, value: number) => Promise<void>;
+  onDelete: (date: string) => Promise<void>;
 }
 
 const FIELD_LABEL: Record<BodyDataField, string> = {
@@ -90,7 +90,9 @@ export function BodyDataHistoryModal({ visible, field, history, onClose, onUpdat
   const handleSave = (date: string) => {
     const value = parseFloat(drafts[date] ?? '');
     if (Number.isNaN(value)) return;
-    onUpdate(date, value);
+    onUpdate(date, value).catch(err => {
+      Alert.alert('更新に失敗しました', err instanceof Error ? err.message : '不明なエラー');
+    });
   };
 
   /**
@@ -114,7 +116,10 @@ export function BodyDataHistoryModal({ visible, field, history, onClose, onUpdat
       {
         text: '削除',
         style: 'destructive',
-        onPress: () => onDelete(date),
+        onPress: () =>
+          onDelete(date).catch(err =>
+            Alert.alert('削除に失敗しました', err instanceof Error ? err.message : '不明なエラー'),
+          ),
       },
     ]);
   };

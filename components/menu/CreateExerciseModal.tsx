@@ -16,7 +16,7 @@
  */
 
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { tokens } from '@/constants/design-tokens';
 import { Exercise } from '@/hooks/useMenuPresetStore';
@@ -24,7 +24,7 @@ import { Exercise } from '@/hooks/useMenuPresetStore';
 interface CreateExerciseModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (payload: Omit<Exercise, 'id'>) => void;
+  onSubmit: (payload: Omit<Exercise, 'id' | 'orderIndex'>) => Promise<void>;
 }
 
 const INITIAL_FORM = {
@@ -32,7 +32,7 @@ const INITIAL_FORM = {
   sets: '3',
   reps: '8',
   weight: '40',
-  restSeconds: '90',
+  restSeconds: '120',
   trainingSeconds: '60',
   focusArea: 'push' as Exercise['focusArea'],
   note: '',
@@ -76,6 +76,7 @@ function normalizeUrl(url: string) {
  */
 export function CreateExerciseModal({ visible, onClose, onSubmit }: CreateExerciseModalProps) {
   const [form, setForm] = useState(INITIAL_FORM);
+  const [submitting, setSubmitting] = useState(false);
 
   /**
    * handleSubmit
@@ -92,22 +93,29 @@ export function CreateExerciseModal({ visible, onClose, onSubmit }: CreateExerci
    * 【副作用】
    * フォーム state を初期値へ戻す。
    */
-  const handleSubmit = () => {
-    if (!form.name.trim()) return;
-    onSubmit({
-      name: form.name.trim(),
-      sets: Number(form.sets) || 3,
-      reps: Number(form.reps) || 8,
-      weight: Number(form.weight) || 0,
-      restSeconds: Number(form.restSeconds) || 60,
-      trainingSeconds: Number(form.trainingSeconds) || 60,
-      focusArea: form.focusArea ?? 'push',
-      note: form.note?.trim() ?? '',
-      enabled: true,
-      youtubeUrl: form.youtubeUrl?.trim() ? normalizeUrl(form.youtubeUrl.trim()) : undefined,
-    });
-    setForm(INITIAL_FORM);
-    onClose();
+  const handleSubmit = async () => {
+    if (!form.name.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        name: form.name.trim(),
+        sets: Number(form.sets) || 3,
+        reps: Number(form.reps) || 8,
+        weight: Number(form.weight) || 0,
+      restSeconds: Number(form.restSeconds) || 120,
+        trainingSeconds: Number(form.trainingSeconds) || 60,
+        focusArea: form.focusArea ?? 'push',
+        note: form.note?.trim() ?? '',
+        enabled: true,
+        youtubeUrl: form.youtubeUrl?.trim() ? normalizeUrl(form.youtubeUrl.trim()) : undefined,
+      });
+      setForm(INITIAL_FORM);
+      onClose();
+    } catch (error) {
+      Alert.alert('保存に失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -205,8 +213,8 @@ export function CreateExerciseModal({ visible, onClose, onSubmit }: CreateExerci
             <Pressable onPress={onClose} style={[styles.button, styles.secondary]}>
               <Text style={styles.secondaryText}>閉じる</Text>
             </Pressable>
-            <Pressable onPress={handleSubmit} style={[styles.button, styles.primary]}>
-              <Text style={styles.primaryText}>追加</Text>
+            <Pressable onPress={handleSubmit} style={[styles.button, styles.primary]} disabled={submitting}>
+              <Text style={styles.primaryText}>{submitting ? '追加中...' : '追加'}</Text>
             </Pressable>
           </View>
         </View>

@@ -22,10 +22,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import type { ReactNode } from 'react';
 
 import { tokens } from '@/constants/design-tokens';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SupabaseProvider } from '@/providers/SupabaseProvider';
+import { useSupabaseBootstrap } from '@/hooks/useSupabaseBootstrap';
+import { AuthGate } from '@/components/auth/AuthGate';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -52,16 +56,49 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <LinearGradient colors={tokens.gradients.appBackground} style={styles.background}>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack screenOptions={{ headerShown: false, contentStyle: styles.stackContent }}>
-            <Stack.Screen name="(tabs)" />
-          </Stack>
-          <StatusBar style={statusBarStyle} />
-        </ThemeProvider>
-      </LinearGradient>
+      <SupabaseProvider>
+        <AuthGate>
+          <BootstrapGate>
+            <LinearGradient colors={tokens.gradients.appBackground} style={styles.background}>
+              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                <Stack screenOptions={{ headerShown: false, contentStyle: styles.stackContent }}>
+                  <Stack.Screen name="(tabs)" />
+                </Stack>
+                <StatusBar style={statusBarStyle} />
+              </ThemeProvider>
+            </LinearGradient>
+          </BootstrapGate>
+        </AuthGate>
+      </SupabaseProvider>
     </SafeAreaProvider>
   );
+}
+
+interface BootstrapGateProps {
+  children: ReactNode;
+}
+
+function BootstrapGate({ children }: BootstrapGateProps) {
+  const { ready, error } = useSupabaseBootstrap();
+
+  if (error) {
+    return (
+      <View style={styles.blocker}>
+        <Text style={styles.blockerText}>データ同期に失敗しました: {error}</Text>
+      </View>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <View style={styles.blocker}>
+        <ActivityIndicator color="#fff" size="large" />
+        <Text style={styles.blockerText}>Supabase と同期中です...</Text>
+      </View>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 const styles = StyleSheet.create({
@@ -70,5 +107,17 @@ const styles = StyleSheet.create({
   },
   stackContent: {
     backgroundColor: 'transparent',
+  },
+  blocker: {
+    flex: 1,
+    backgroundColor: '#03030a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  blockerText: {
+    color: '#fff',
+    marginTop: 16,
+    textAlign: 'center',
   },
 });
