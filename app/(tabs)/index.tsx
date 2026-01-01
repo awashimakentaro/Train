@@ -16,6 +16,7 @@
 
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BodyDataCard } from '@/components/body-data/BodyDataCard';
 import { AddBodyDataModal, BodyDataFormPayload } from '@/components/body-data/AddBodyDataModal';
@@ -59,6 +60,7 @@ export default function BodyScreen() {
   const latestData = latest();
   const [isAddModalVisible, setAddModalVisible] = useState(false);
   const [historyField, setHistoryField] = useState<BodyDataField | null>(null);
+  const insets = useSafeAreaInsets();
 
   const cards = useMemo(() => CARD_CONFIG, []);
 
@@ -122,7 +124,7 @@ export default function BodyScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + tokens.spacing.md }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
