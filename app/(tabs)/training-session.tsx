@@ -14,10 +14,10 @@
  * - hooks/useTrainingSession.ts / components/training/RingTimer.tsx / TrainingResultModal
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { RingTimer } from '@/components/training/RingTimer';
 import { TrainingResultModal } from '@/components/training/TrainingResultModal';
@@ -87,6 +87,14 @@ export default function TrainingScreen() {
     }
   }, [phase, lastCompletedSession]);
 
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setResultVisible(false);
+      };
+    }, []),
+  );
+
   const phaseTheme = useMemo(() => {
     switch (phase) {
       case 'training':
@@ -142,34 +150,18 @@ export default function TrainingScreen() {
             <Text style={styles.statusMeta}>メニューから開始してください</Text>
           )}
         </View>
-        <RingTimer progress={progress} label={timerLabel} subLabel={subLabel} />
+        <RingTimer
+          progress={progress}
+          label={timerLabel}
+          subLabel={subLabel}
+          note={activeExercise?.note ?? null}
+          youtubeUrl={activeExercise?.youtubeUrl ?? null}
+          onPressYoutube={handleOpenLink}
+        />
         <View style={styles.weightCard}>
           <Text style={styles.weightLabel}>重量</Text>
           <Text style={styles.weightValue}>{activeExercise?.weight ?? 0} kg</Text>
         </View>
-        {phase !== 'idle' && activeExercise ? (
-          <View style={styles.resourceCard}>
-            <View style={styles.resourceRow}>
-              <Text style={styles.resourceLabel}>メモ</Text>
-              <Text
-                style={[styles.resourceText, !activeExercise.note && styles.resourcePlaceholder]}
-                numberOfLines={4}>
-                {activeExercise.note?.trim() || 'メモが登録されていません'}
-              </Text>
-            </View>
-            <View style={styles.resourceRow}>
-              <Text style={styles.resourceLabel}>YouTube</Text>
-              {activeExercise.youtubeUrl ? (
-                <Pressable style={styles.linkButton} onPress={() => handleOpenLink(activeExercise.youtubeUrl)}>
-                  <Feather name="external-link" size={16} color="#fff" />
-                  <Text style={styles.linkButtonText}>参考動画を開く</Text>
-                </Pressable>
-              ) : (
-                <Text style={[styles.resourceText, styles.resourcePlaceholder]}>リンク未登録</Text>
-              )}
-            </View>
-          </View>
-        ) : null}
         <View style={styles.controlRow}>
           <Pressable
             disabled={phase === 'idle' || phase === 'completed'}
@@ -199,6 +191,27 @@ export default function TrainingScreen() {
               ) : null}
             </View>
           ))}
+        </View>
+        <View style={styles.memoCard}>
+          <Text style={styles.memoTitle}>メモ / リンク</Text>
+          {phase !== 'idle' && activeExercise ? (
+            <>
+              <Text style={[styles.memoText, !activeExercise.note && styles.memoPlaceholder]} numberOfLines={4}>
+                {activeExercise.note?.trim() || '登録されたメモがありません'}
+              </Text>
+              {activeExercise.youtubeUrl ? (
+                <Pressable
+                  style={styles.memoLinkButton}
+                  onPress={() => handleOpenLink(activeExercise.youtubeUrl)}>
+                  <Text style={styles.memoLinkText}>{activeExercise.youtubeUrl}</Text>
+                </Pressable>
+              ) : (
+                <Text style={[styles.memoText, styles.memoPlaceholder]}>リンク未登録</Text>
+              )}
+            </>
+          ) : (
+            <Text style={[styles.memoText, styles.memoPlaceholder]}>セッションを開始すると表示されます</Text>
+          )}
         </View>
       </ScrollView>
       <TrainingResultModal
@@ -250,40 +263,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
   },
-  resourceCard: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 20,
-    padding: 20,
-    gap: 12,
-  },
-  resourceRow: {
-    gap: 8,
-  },
-  resourceLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 13,
-  },
-  resourceText: {
-    color: 'rgba(255,255,255,0.95)',
-    lineHeight: 20,
-  },
-  resourcePlaceholder: {
-    color: 'rgba(255,255,255,0.6)',
-  },
-  linkButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: 'rgba(124,58,237,0.9)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  linkButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
   controlRow: {
     flexDirection: 'row',
     gap: 16,
@@ -329,6 +308,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   badge: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  memoCard: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    padding: 20,
+    gap: 12,
+  },
+  memoTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  memoText: {
+    color: 'rgba(255,255,255,0.95)',
+    lineHeight: 20,
+  },
+  memoPlaceholder: {
+    color: 'rgba(255,255,255,0.6)',
+  },
+  memoLinkButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(124,58,237,0.95)',
+  },
+  memoLinkText: {
     color: '#fff',
     fontWeight: '600',
   },

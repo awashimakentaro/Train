@@ -16,7 +16,7 @@
  */
 
 import { memo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { tokens } from '@/constants/design-tokens';
@@ -56,6 +56,7 @@ function formatSubLabel(value: string) {
  *
  * 【処理概要】
  * SVG Circle のストロークを利用して進捗リングを描画し、中央に文字列を表示する。
+ * 併せてタイマー直下にメモ/YouTube リンクの補助情報を表示する。
  *
  * 【呼び出し元】
  * トレーニング画面。
@@ -116,6 +117,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
+    pointerEvents: 'none',
   },
   label: {
     color: tokens.palette.textPrimary,

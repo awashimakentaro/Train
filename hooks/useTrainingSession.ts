@@ -35,6 +35,8 @@ export interface SessionExerciseSnapshot {
   restSeconds: number;
   trainingSeconds: number;
   focusArea: Exercise['focusArea'];
+  note?: string;
+  youtubeUrl?: string;
 }
 
 export interface TrainingSessionLog {
@@ -129,6 +131,8 @@ function buildExerciseQueue(exerciseIds?: string[]): SessionExerciseSnapshot[] {
     restSeconds: exercise.restSeconds,
     trainingSeconds: exercise.trainingSeconds ?? DEFAULT_TRAINING_SECONDS,
     focusArea: exercise.focusArea,
+    note: exercise.note ?? undefined,
+    youtubeUrl: exercise.youtubeUrl ?? undefined,
   }));
 }
 

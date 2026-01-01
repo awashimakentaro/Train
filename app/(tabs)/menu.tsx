@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, Modal, ActivityIndicator } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, Modal, ActivityIndicator, GestureResponderEvent } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -159,11 +159,13 @@ export default function MenuScreen() {
                 <Feather name="plus" size={18} color="#7c3aed" />
                 <Text style={styles.heroCtaText}>新しいメニュー</Text>
               </Pressable>
-              <Pressable onPress={handleSignOut} style={styles.signOutButton} accessibilityRole="button">
-                <Feather name="log-out" size={16} color="#7c3aed" />
-                <Text style={styles.signOutText}>ログアウト</Text>
-              </Pressable>
             </View>
+          </View>
+          <View style={styles.heroFooter}>
+            <Pressable onPress={handleSignOut} style={styles.heroPowerButton} accessibilityRole="button">
+              <Feather name="power" size={14} color="#7c3aed" />
+              <Text style={styles.heroPowerText}>ログアウト</Text>
+            </Pressable>
           </View>
         </LinearGradient>
 
@@ -222,6 +224,7 @@ export default function MenuScreen() {
             ))
           )}
         </View>
+
       </ScrollView>
       <CreateExerciseModal
         visible={showExerciseModal}
@@ -252,7 +255,12 @@ export default function MenuScreen() {
                       <Text style={[styles.presetName, isActive && styles.presetNameActive]}>{current.name}</Text>
                       <Text style={[styles.presetMeta, isActive && styles.presetMetaActive]}>{current.exercises.length}種目</Text>
                     </View>
-                    <Pressable onPress={() => setConfirmDeleteId(current.id)} style={styles.deletePresetButton}>
+                    <Pressable
+                      onPress={(event: GestureResponderEvent) => {
+                        event.stopPropagation();
+                        setConfirmDeleteId(current.id);
+                      }}
+                      style={styles.deletePresetButton}>
                       <Feather name="trash-2" size={18} color={isActive ? '#fff' : tokens.palette.accentRed} />
                     </Pressable>
                   </Pressable>
@@ -381,6 +389,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spacing.sm,
   },
+  heroFooter: {
+    alignItems: 'flex-end',
+    marginTop: tokens.spacing.md,
+  },
   heroChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -411,20 +423,22 @@ const styles = StyleSheet.create({
     color: '#7c3aed',
     fontWeight: tokens.typography.weightSemiBold,
   },
-  signOutButton: {
+  heroPowerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: tokens.spacing.xs,
     paddingHorizontal: tokens.spacing.md,
     paddingVertical: tokens.spacing.sm,
     borderRadius: tokens.radii.full,
-    borderWidth: 1,
-    borderColor: '#dec9ff',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
   },
-  signOutText: {
+  heroPowerText: {
     color: '#7c3aed',
-    fontSize: tokens.typography.caption,
-    fontWeight: tokens.typography.weightMedium,
+    fontWeight: tokens.typography.weightSemiBold,
   },
   section: {
     marginBottom: tokens.spacing.lg,
