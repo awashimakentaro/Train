@@ -28,6 +28,7 @@ const TAB_META: Record<string, { icon: keyof typeof Feather.glyphMap; label: str
   menu: { icon: 'grid', label: 'メニュー' },
   index: { icon: 'activity', label: '身体データ' },
   calories: { icon: 'pie-chart', label: 'カロリー' },
+  'training-session': { icon: 'clock', label: 'タイマー' },
 };
 
 /**

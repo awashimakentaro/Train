@@ -15,8 +15,9 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Feather } from '@expo/vector-icons';
 
 import { RingTimer } from '@/components/training/RingTimer';
 import { TrainingResultModal } from '@/components/training/TrainingResultModal';
@@ -31,6 +32,26 @@ function formatSeconds(seconds: number) {
     .toString()
     .padStart(2, '0');
   return `${minutes}:${remainder}`;
+}
+
+/**
+ * buildNormalizedUrl
+ *
+ * 【処理概要】
+ * http/https で始まらない文字列に https:// を付与し、リンクとして扱えるようにする。
+ *
+ * 【呼び出し元】
+ * TrainingScreen 内。
+ *
+ * 【入力 / 出力】
+ * url / string。
+ *
+ * 【副作用】
+ * なし。
+ */
+function buildNormalizedUrl(url: string) {
+  if (!url) return '';
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
 }
 
 export default function TrainingScreen() {
@@ -101,6 +122,11 @@ export default function TrainingScreen() {
     }
   };
 
+  const handleOpenLink = (url?: string) => {
+    if (!url) return;
+    Linking.openURL(buildNormalizedUrl(url)).catch(() => {});
+  };
+
   return (
     <LinearGradient colors={phaseTheme.colors} style={styles.gradient}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -121,6 +147,29 @@ export default function TrainingScreen() {
           <Text style={styles.weightLabel}>重量</Text>
           <Text style={styles.weightValue}>{activeExercise?.weight ?? 0} kg</Text>
         </View>
+        {phase !== 'idle' && activeExercise ? (
+          <View style={styles.resourceCard}>
+            <View style={styles.resourceRow}>
+              <Text style={styles.resourceLabel}>メモ</Text>
+              <Text
+                style={[styles.resourceText, !activeExercise.note && styles.resourcePlaceholder]}
+                numberOfLines={4}>
+                {activeExercise.note?.trim() || 'メモが登録されていません'}
+              </Text>
+            </View>
+            <View style={styles.resourceRow}>
+              <Text style={styles.resourceLabel}>YouTube</Text>
+              {activeExercise.youtubeUrl ? (
+                <Pressable style={styles.linkButton} onPress={() => handleOpenLink(activeExercise.youtubeUrl)}>
+                  <Feather name="external-link" size={16} color="#fff" />
+                  <Text style={styles.linkButtonText}>参考動画を開く</Text>
+                </Pressable>
+              ) : (
+                <Text style={[styles.resourceText, styles.resourcePlaceholder]}>リンク未登録</Text>
+              )}
+            </View>
+          </View>
+        ) : null}
         <View style={styles.controlRow}>
           <Pressable
             disabled={phase === 'idle' || phase === 'completed'}
@@ -200,6 +249,40 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '600',
     marginTop: 4,
+  },
+  resourceCard: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 20,
+    padding: 20,
+    gap: 12,
+  },
+  resourceRow: {
+    gap: 8,
+  },
+  resourceLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+  },
+  resourceText: {
+    color: 'rgba(255,255,255,0.95)',
+    lineHeight: 20,
+  },
+  resourcePlaceholder: {
+    color: 'rgba(255,255,255,0.6)',
+  },
+  linkButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(124,58,237,0.9)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  linkButtonText: {
+    color: '#fff',
+    fontWeight: '600',
   },
   controlRow: {
     flexDirection: 'row',

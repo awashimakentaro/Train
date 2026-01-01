@@ -35,7 +35,29 @@ const INITIAL_FORM = {
   restSeconds: '90',
   trainingSeconds: '60',
   focusArea: 'push' as Exercise['focusArea'],
+  note: '',
+  youtubeUrl: '',
 };
+
+/**
+ * normalizeUrl
+ *
+ * 【処理概要】
+ * ユーザーが入力した文字列に http/https が含まれない場合 https:// を付与する。
+ *
+ * 【呼び出し元】
+ * CreateExerciseModal 内の handleSubmit。
+ *
+ * 【入力 / 出力】
+ * url / string。
+ *
+ * 【副作用】
+ * なし。
+ */
+function normalizeUrl(url: string) {
+  if (!url) return '';
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
 
 /**
  * CreateExerciseModal
@@ -80,9 +102,9 @@ export function CreateExerciseModal({ visible, onClose, onSubmit }: CreateExerci
       restSeconds: Number(form.restSeconds) || 60,
       trainingSeconds: Number(form.trainingSeconds) || 60,
       focusArea: form.focusArea ?? 'push',
-      note: '',
+      note: form.note?.trim() ?? '',
       enabled: true,
-      youtubeUrl: undefined,
+      youtubeUrl: form.youtubeUrl?.trim() ? normalizeUrl(form.youtubeUrl.trim()) : undefined,
     });
     setForm(INITIAL_FORM);
     onClose();
@@ -157,6 +179,28 @@ export function CreateExerciseModal({ visible, onClose, onSubmit }: CreateExerci
               style={styles.input}
             />
           </View>
+          <View style={styles.fieldBlock}>
+            <Text style={styles.label}>トレーニングメモ</Text>
+            <TextInput
+              value={form.note}
+              onChangeText={text => setForm(prev => ({ ...prev, note: text }))}
+              placeholder="フォームの注意点など"
+              placeholderTextColor={tokens.palette.textTertiary}
+              style={[styles.input, styles.textarea]}
+              multiline
+            />
+          </View>
+          <View style={styles.fieldBlock}>
+            <Text style={styles.label}>YouTube リンク</Text>
+            <TextInput
+              value={form.youtubeUrl}
+              onChangeText={text => setForm(prev => ({ ...prev, youtubeUrl: text }))}
+              placeholder="https://youtu.be/..."
+              autoCapitalize="none"
+              keyboardType="url"
+              style={styles.input}
+            />
+          </View>
           <View style={styles.buttonRow}>
             <Pressable onPress={onClose} style={[styles.button, styles.secondary]}>
               <Text style={styles.secondaryText}>閉じる</Text>
@@ -200,6 +244,10 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     marginBottom: tokens.spacing.md,
     backgroundColor: '#f8fafc',
+  },
+  textarea: {
+    minHeight: 96,
+    textAlignVertical: 'top',
   },
   row: {
     flexDirection: 'row',

@@ -126,10 +126,32 @@ function ExerciseCardComponent({ exercise, onChange, onRemove, onToggle }: Exerc
                     keyboardType="numeric"
                     style={styles.numberInput}
                   />
-                  {field.suffix ? <Text style={styles.suffix}>{field.suffix}</Text> : null}
+                  {field.unit ? <Text style={styles.suffix}>{field.unit}</Text> : null}
                 </View>
               </View>
             ))}
+          </View>
+          <View style={styles.noteSection}>
+            <Text style={styles.noteLabel}>トレーニングメモ</Text>
+            <TextInput
+              value={exercise.note ?? ''}
+              onChangeText={text => onChange(exercise.id, { note: text })}
+              placeholder="フォームやリマインドを記録"
+              placeholderTextColor={tokens.palette.textTertiary}
+              multiline
+              style={styles.noteInput}
+            />
+          </View>
+          <View style={styles.noteSection}>
+            <Text style={styles.noteLabel}>YouTube リンク</Text>
+            <TextInput
+              value={exercise.youtubeUrl ?? ''}
+              onChangeText={text => onChange(exercise.id, { youtubeUrl: text })}
+              placeholder="https://youtu.be/..."
+              autoCapitalize="none"
+              keyboardType="url"
+              style={styles.linkInput}
+            />
           </View>
           <Pressable onPress={() => onRemove(exercise.id)} style={styles.removeButton} accessibilityRole="button">
             <Text style={styles.removeText}>削除</Text>
@@ -223,6 +245,32 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: tokens.typography.caption,
     marginLeft: tokens.spacing.xs,
+  },
+  noteSection: {
+    marginTop: tokens.spacing.md,
+  },
+  noteLabel: {
+    color: '#334155',
+    marginBottom: tokens.spacing.xs,
+    fontSize: tokens.typography.caption,
+  },
+  noteInput: {
+    borderWidth: 1,
+    borderColor: tokens.palette.borderMuted,
+    borderRadius: tokens.radii.md,
+    padding: tokens.spacing.md,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
+    minHeight: 96,
+    textAlignVertical: 'top',
+  },
+  linkInput: {
+    borderWidth: 1,
+    borderColor: tokens.palette.borderMuted,
+    borderRadius: tokens.radii.md,
+    padding: tokens.spacing.md,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
   },
   removeButton: {
     marginTop: tokens.spacing.md,
