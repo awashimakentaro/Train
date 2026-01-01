@@ -128,8 +128,7 @@ export const useBodyDataStore = create<BodyDataState>((set, get) => ({
     if (!userId) throw new Error('Supabase ユーザーが未初期化です');
     const date = entry.date ?? new Date().toISOString().slice(0, 10);
     const base =
-      get().history.find(record => record.date === date) ??
-      get().history[0] ?? {
+      get().history.find(record => record.date === date) ?? {
         date,
         weight: entry.weight ?? 0,
         bodyFat: entry.bodyFat ?? 0,
@@ -139,14 +138,15 @@ export const useBodyDataStore = create<BodyDataState>((set, get) => ({
         visceralFat: entry.visceralFat ?? 0,
       };
     const record = buildRecord(base, entry, date);
-    const { error } = await supabase.from('body_entries').upsert(toRow(userId, record));
+    const prevHistory = get().history;
+    const nextHistory = [record, ...prevHistory.filter(item => item.date !== date)].sort((a, b) => (a.date < b.date ? 1 : -1));
+    set({ history: nextHistory });
+    const { error } = await supabase.from('body_entries').upsert(toRow(userId, record), { onConflict: 'user_id,entry_date' }).limit(1);
     if (error) {
       console.error('[supabase] upsert body entry failed', error);
+      set({ history: prevHistory });
       throw new Error(error.message);
     }
-    set(state => ({
-      history: [record, ...state.history.filter(item => item.date !== date)].sort((a, b) => (a.date < b.date ? 1 : -1)),
-    }));
   },
   async updateEntry(date, updates) {
     await get().addEntry({ ...updates, date });

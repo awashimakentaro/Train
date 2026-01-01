@@ -16,7 +16,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform } from 'react-native';
 
 import { tokens } from '@/constants/design-tokens';
 
@@ -128,17 +128,20 @@ export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModa
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>身体データ入力</Text>
-          <TextInput
-            value={date}
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#cbd5f5"
-            style={styles.dateInput}
-          />
-          <ScrollView style={styles.formArea} contentContainerStyle={{ paddingBottom: tokens.spacing.lg }}>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <Text style={styles.title}>身体データ入力</Text>
+            <TextInput
+              value={date}
+              onChangeText={setDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#cbd5f5"
+              style={styles.dateInput}
+            />
             {FIELD_DEFS.map(field => (
               <View key={field.key} style={styles.fieldRow}>
                 <Text style={styles.label}>{field.label}</Text>
@@ -152,21 +155,21 @@ export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModa
                 />
               </View>
             ))}
+            <View style={styles.buttonRow}>
+              <Pressable onPress={onClose} style={[styles.button, styles.secondaryButton]} accessibilityRole="button">
+                <Text style={styles.secondaryText}>閉じる</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSubmit}
+                disabled={isDisabled || submitting}
+                style={[styles.button, isDisabled || submitting ? styles.buttonDisabled : styles.primaryButton]}
+                accessibilityRole="button">
+                <Text style={styles.primaryText}>{submitting ? '保存中...' : '保存'}</Text>
+              </Pressable>
+            </View>
           </ScrollView>
-          <View style={styles.buttonRow}>
-            <Pressable onPress={onClose} style={[styles.button, styles.secondaryButton]} accessibilityRole="button">
-              <Text style={styles.secondaryText}>閉じる</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleSubmit}
-              disabled={isDisabled || submitting}
-              style={[styles.button, isDisabled || submitting ? styles.buttonDisabled : styles.primaryButton]}
-              accessibilityRole="button">
-              <Text style={styles.primaryText}>{submitting ? '保存中...' : '保存'}</Text>
-            </Pressable>
-          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -181,10 +184,12 @@ const styles = StyleSheet.create({
   sheet: {
     backgroundColor: '#fff',
     borderRadius: 24,
-    padding: tokens.spacing.lg,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     maxHeight: '90%',
+  },
+  content: {
+    padding: tokens.spacing.lg,
     gap: tokens.spacing.sm,
   },
   title: {
@@ -201,9 +206,6 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     marginBottom: tokens.spacing.md,
     backgroundColor: '#f8fafc',
-  },
-  formArea: {
-    maxHeight: 320,
   },
   fieldRow: {
     marginBottom: tokens.spacing.md,

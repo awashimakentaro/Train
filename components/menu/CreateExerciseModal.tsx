@@ -16,7 +16,7 @@
  */
 
 import { useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { tokens } from '@/constants/design-tokens';
 import { Exercise } from '@/hooks/useMenuPresetStore';
@@ -122,7 +122,8 @@ export function CreateExerciseModal({ visible, onClose, onSubmit }: CreateExerci
     <Modal visible={visible} animationType="fade" transparent>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>種目を追加</Text>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <Text style={styles.title}>種目を追加</Text>
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>種目名</Text>
             <TextInput
@@ -208,15 +209,16 @@ export function CreateExerciseModal({ visible, onClose, onSubmit }: CreateExerci
               keyboardType="url"
               style={styles.input}
             />
+            <View style={styles.buttonRow}>
+              <Pressable onPress={onClose} style={[styles.button, styles.secondary]}>
+                <Text style={styles.secondaryText}>閉じる</Text>
+              </Pressable>
+              <Pressable onPress={handleSubmit} style={[styles.button, styles.primary]} disabled={submitting}>
+                <Text style={styles.primaryText}>{submitting ? '追加中...' : '追加'}</Text>
+              </Pressable>
+            </View>
           </View>
-          <View style={styles.buttonRow}>
-            <Pressable onPress={onClose} style={[styles.button, styles.secondary]}>
-              <Text style={styles.secondaryText}>閉じる</Text>
-            </Pressable>
-            <Pressable onPress={handleSubmit} style={[styles.button, styles.primary]} disabled={submitting}>
-              <Text style={styles.primaryText}>{submitting ? '追加中...' : '追加'}</Text>
-            </Pressable>
-          </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -235,8 +237,10 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radii.lg,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    maxHeight: '90%',
+  },
+  content: {
     padding: tokens.spacing.lg,
-    gap: tokens.spacing.sm,
   },
   title: {
     color: '#0f172a',

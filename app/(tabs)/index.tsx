@@ -21,10 +21,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
 import { BodyDataCard } from '@/components/body-data/BodyDataCard';
+import { BodyTrendChart } from '@/components/body-data/BodyTrendChart';
 import { AddBodyDataModal, BodyDataFormPayload } from '@/components/body-data/AddBodyDataModal';
 import { BodyDataHistoryModal } from '@/components/body-data/BodyDataHistoryModal';
 import { tokens } from '@/constants/design-tokens';
-import { BodyDataField, useBodyDataStore } from '@/hooks/useBodyDataStore';
+import { BodyDataField, BodyDataRecord, useBodyDataStore } from '@/hooks/useBodyDataStore';
 
 interface CardMeta {
   field: BodyDataField;
@@ -60,6 +61,26 @@ const CARD_CONFIG: CardMeta[] = [
 export default function BodyScreen() {
   const { history, latest, addEntry, updateEntry, removeEntry, getTrend, getSeries } = useBodyDataStore();
   const latestData = latest();
+  const trendConfigs = useMemo(
+    () => [
+      { key: 'weight', title: '体重の推移', unit: 'kg', color: tokens.palette.accentPurple },
+      { key: 'bodyFat', title: '体脂肪率の推移', unit: '%', color: tokens.palette.accentPink },
+      { key: 'muscleMass', title: '筋肉量の推移', unit: 'kg', color: tokens.palette.accentBlue },
+    ] as const,
+    [],
+  );
+  const trendSeries = useMemo(
+    () =>
+      trendConfigs.map(config => ({
+        ...config,
+        data: history
+          .slice()
+          .reverse()
+          .map(record => ({ dateLabel: record.date.slice(5), value: record[config.key as keyof BodyDataRecord] as number }))
+          .slice(-14),
+      })),
+    [history, trendConfigs],
+  );
   const [isAddModalVisible, setAddModalVisible] = useState(false);
   const [historyField, setHistoryField] = useState<BodyDataField | null>(null);
   const insets = useSafeAreaInsets();
@@ -164,6 +185,11 @@ export default function BodyScreen() {
             <Feather name="plus" size={18} color="#7c3aed" />
             <Text style={styles.sectionButtonText}>データ入力</Text>
           </Pressable>
+        </View>
+        <View style={styles.trendSection}>
+          {trendSeries.map(trend => (
+            <BodyTrendChart key={trend.key} title={trend.title} unit={trend.unit} color={trend.color} data={trend.data} />
+          ))}
         </View>
         <View style={styles.cardList}>
           {cards.map(card => (
@@ -283,5 +309,8 @@ const styles = StyleSheet.create({
   },
   cardList: {
     marginTop: tokens.spacing.lg,
+  },
+  trendSection: {
+    marginTop: tokens.spacing.md,
   },
 });
