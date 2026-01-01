@@ -24,7 +24,7 @@ interface CalorieEntryModalProps {
   visible: boolean;
   type: CalorieEntryType;
   onClose: () => void;
-  onSubmit: (payload: { amount: number; label: string }) => void;
+  onSubmit: (payload: { amount: number; label: string; durationMinutes?: number }) => void;
 }
 
 /**
@@ -45,6 +45,7 @@ interface CalorieEntryModalProps {
 export function CalorieEntryModal({ visible, type, onClose, onSubmit }: CalorieEntryModalProps) {
   const [amount, setAmount] = useState('');
   const [label, setLabel] = useState('');
+  const [duration, setDuration] = useState('');
 
   /**
    * handleSave
@@ -64,9 +65,14 @@ export function CalorieEntryModal({ visible, type, onClose, onSubmit }: CalorieE
   const handleSave = () => {
     const parsed = Number(amount);
     if (!parsed || !label.trim()) return;
-    onSubmit({ amount: parsed, label: label.trim() });
+    onSubmit({
+      amount: parsed,
+      label: label.trim(),
+      durationMinutes: type === 'burn' ? Number(duration) || undefined : undefined,
+    });
     setAmount('');
     setLabel('');
+    setDuration('');
     onClose();
   };
 
@@ -90,6 +96,16 @@ export function CalorieEntryModal({ visible, type, onClose, onSubmit }: CalorieE
             style={styles.input}
             placeholderTextColor={tokens.palette.textTertiary}
           />
+          {type === 'burn' ? (
+            <TextInput
+              value={duration}
+              onChangeText={setDuration}
+              placeholder="トレーニング時間 (分)"
+              keyboardType="number-pad"
+              style={styles.input}
+              placeholderTextColor={tokens.palette.textTertiary}
+            />
+          ) : null}
           <View style={styles.buttonRow}>
             <Pressable onPress={onClose} style={[styles.button, styles.secondary]}>
               <Text style={styles.secondaryText}>閉じる</Text>

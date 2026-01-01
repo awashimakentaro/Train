@@ -205,11 +205,14 @@ function createSessionLog(state: TrainingSessionSlice, finishedAt: string): Trai
 function finalizeSession(state: TrainingSessionSlice): TrainingSessionSlice {
   const finishedAt = new Date().toISOString();
   const log = createSessionLog(state, finishedAt);
+  const mainName = log.exercises[0]?.name ?? 'セッション';
   useCalorieStore.getState().addTrainingEntry({
     sessionId: log.id,
     calories: log.caloriesBurned,
     finishedAt,
     exerciseCount: log.exercises.length,
+    durationSeconds: log.durationSeconds,
+    label: log.exercises.length > 1 ? `${mainName} 他${log.exercises.length - 1}種目` : mainName,
   });
 
   return {

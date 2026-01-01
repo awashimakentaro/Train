@@ -28,6 +28,7 @@ export interface CalorieEntry {
   date: string; // YYYY-MM-DD
   category?: string;
   linkedSessionId?: string;
+  durationMinutes?: number;
 }
 
 export interface CalorieState {
@@ -44,6 +45,8 @@ export interface TrainingSummaryPayload {
   calories: number;
   finishedAt: string;
   exerciseCount: number;
+  durationSeconds: number;
+  label?: string;
 }
 
 /**
@@ -193,10 +196,11 @@ export const useCalorieStore = create<CalorieState>((set, get) => ({
           id: payload.sessionId,
           type: 'burn',
           amount: payload.calories,
-          label: `${payload.exerciseCount}種目セッション`,
+          label: payload.label ?? `${payload.exerciseCount}種目セッション`,
           date: payload.finishedAt.slice(0, 10),
           category: 'training',
           linkedSessionId: payload.sessionId,
+          durationMinutes: Math.round(payload.durationSeconds / 60) || 0,
         },
         ...state.entries,
       ],
