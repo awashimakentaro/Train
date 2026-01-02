@@ -23,7 +23,23 @@ import { RingTimer } from '@/components/training/RingTimer';
 import { TrainingResultModal } from '@/components/training/TrainingResultModal';
 import { useMenuPresetStore } from '@/hooks/useMenuPresetStore';
 import { useTrainingSession } from '@/hooks/useTrainingSession';
+import { useTimerSoundAgent } from '@/hooks/useTimerSoundAgent';
 
+/**
+ * formatSeconds
+ *
+ * 【処理概要】
+ * 秒数を mm:ss 形式に整形してタイマー表示用の文字列を返す。
+ *
+ * 【呼び出し元】
+ * TrainingScreen 内。
+ *
+ * 【入力 / 出力】
+ * seconds / string。
+ *
+ * 【副作用】
+ * なし。
+ */
 function formatSeconds(seconds: number) {
   const minutes = Math.floor(seconds / 60)
     .toString()
@@ -54,6 +70,21 @@ function buildNormalizedUrl(url: string) {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
 }
 
+/**
+ * TrainingScreen
+ *
+ * 【処理概要】
+ * セッション状態を UI に描画し、タイマー進行や結果モーダル、効果音を連携させる。
+ *
+ * 【呼び出し元】
+ * Expo Router のタブ。
+ *
+ * 【入力 / 出力】
+ * なし / JSX.Element。
+ *
+ * 【副作用】
+ * useEffect により setInterval を生成し、useTimerSoundAgent で効果音を再生する。
+ */
 export default function TrainingScreen() {
   const { getActivePreset } = useMenuPresetStore();
   const {
@@ -75,6 +106,7 @@ export default function TrainingScreen() {
   const activeExercise = exercises[exerciseIndex];
   const idlePreview = phase === 'idle' ? preset.exercises : exercises;
   const [resultVisible, setResultVisible] = useState(false);
+  useTimerSoundAgent({ phase, phaseRemainingSeconds, isPaused });
 
   useEffect(() => {
     const interval = setInterval(() => tick(1), 1000);
