@@ -27,6 +27,10 @@ interface ExerciseCardProps {
   onChange: (id: string, updates: Partial<Exercise>) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
   onToggle: (id: string) => Promise<void>;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }
 
 const NUMBER_FIELDS: { key: keyof Exercise; label: string; unit?: string }[] = [
@@ -71,7 +75,7 @@ function formatNumber(value: number) {
  * 【副作用】
  * なし（押下時に親コールバックを通して状態変更）。
  */
-function ExerciseCardComponent({ exercise, onChange, onRemove, onToggle }: ExerciseCardProps) {
+function ExerciseCardComponent({ exercise, onChange, onRemove, onToggle, onMoveUp, onMoveDown, canMoveUp, canMoveDown }: ExerciseCardProps) {
   const [expanded, setExpanded] = useState(false);
   /**
    * adjustField
@@ -114,6 +118,22 @@ function ExerciseCardComponent({ exercise, onChange, onRemove, onToggle }: Exerc
             <Text style={styles.meta}>{exercise.focusArea.toUpperCase()}</Text>
           </View>
         </Pressable>
+        <View style={styles.orderControls}>
+          <Pressable
+            onPress={onMoveUp}
+            disabled={!canMoveUp}
+            style={[styles.orderButton, !canMoveUp && styles.orderButtonDisabled]}
+            accessibilityRole="button">
+            <Feather name="arrow-up" size={16} color={canMoveUp ? '#475569' : '#cbd5f5'} />
+          </Pressable>
+          <Pressable
+            onPress={onMoveDown}
+            disabled={!canMoveDown}
+            style={[styles.orderButton, !canMoveDown && styles.orderButtonDisabled]}
+            accessibilityRole="button">
+            <Feather name="arrow-down" size={16} color={canMoveDown ? '#475569' : '#cbd5f5'} />
+          </Pressable>
+        </View>
         <Pressable onPress={() => setExpanded(prev => !prev)} accessibilityRole="button">
           <Feather
             name={expanded ? 'chevron-up' : 'chevron-down'}
@@ -202,6 +222,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spacing.md,
     flex: 1,
+  },
+  orderControls: {
+    flexDirection: 'column',
+    gap: 2,
+    marginRight: tokens.spacing.xs,
+  },
+  orderButton: {
+    padding: tokens.spacing.xs,
+    borderRadius: tokens.radii.sm,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+  },
+  orderButtonDisabled: {
+    backgroundColor: '#f8fafc',
   },
   checkBox: {
     width: 32,

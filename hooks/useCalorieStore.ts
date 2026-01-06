@@ -45,6 +45,7 @@ interface CalorieState {
   initialize: (userId: string) => Promise<void>;
   addEntry: (entry: Omit<CalorieEntry, 'id'>) => Promise<void>;
   addTrainingEntry: (payload: TrainingSummaryPayload) => Promise<void>;
+  updateTrainingEntryCalories: (sessionId: string, calories: number) => Promise<void>;
   removeEntry: (id: string) => Promise<void>;
   getTodaySummary: () => { intake: number; burn: number; delta: number };
   getDailySeries: (days?: number) => { date: string; intake: number; burn: number }[];
@@ -182,6 +183,49 @@ export const useCalorieStore = create<CalorieState>((set, get) => ({
     }
 
     set(state => ({ entries: [mapEntry(data), ...state.entries] }));
+  },
+  /**
+   * updateTrainingEntryCalories
+   *
+   * 【処理概要】
+   * OpenAI など外部推定で得られたカロリー値で、既存のセッション連動エントリを更新する。
+   *
+   * 【呼び出し元】
+   * hooks/useTrainingSession.ts 内の AI 推定完了時。
+   *
+   * 【入力 / 出力】
+   * sessionId, calories / なし。
+   *
+   * 【副作用】
+   * Supabase の calorie_entries / training_sessions を更新し、Zustand state を同期する。
+   */
+  async updateTrainingEntryCalories(sessionId, calories) {
+    const userId = get().userId;
+    if (!userId) {
+      return;
+    }
+    const amount = Math.round(calories);
+    const { error: entryError } = await supabase
+      .from('calorie_entries')
+      .update({ amount })
+      .eq('user_id', userId)
+      .eq('linked_session_id', sessionId);
+    if (entryError) {
+      console.error('[supabase] calorie entry update failed', entryError);
+    }
+    const { error: sessionError } = await supabase
+      .from('training_sessions')
+      .update({ calories: amount })
+      .eq('user_id', userId)
+      .eq('id', sessionId);
+    if (sessionError) {
+      console.error('[supabase] training session update failed', sessionError);
+    }
+    set(state => ({
+      entries: state.entries.map(entry =>
+        entry.linkedSessionId === sessionId ? { ...entry, amount } : entry,
+      ),
+    }));
   },
   async removeEntry(id) {
     const userId = get().userId;

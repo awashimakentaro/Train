@@ -14,7 +14,7 @@
  * - hooks/useTrainingSession.ts から渡されるログデータを表示する。
  */
 
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { tokens } from '@/constants/design-tokens';
@@ -34,6 +34,18 @@ interface TrainingResultModalProps {
  */
 export function TrainingResultModal({ visible, log, onClose }: TrainingResultModalProps) {
   if (!log) return null;
+  const pending = log.calorieEstimatePending;
+  const perExerciseMap = pending ? null : buildPerExerciseCalorieMap(log);
+  const providerLabel = pending
+    ? 'AI 推定中'
+    : log.calorieDetail.provider === 'openai'
+      ? 'AI 推定値'
+      : 'ベースライン推定';
+  const providerMeta = pending
+    ? 'AI で消費カロリーを算出しています'
+    : log.calorieDetail.model
+      ? `${providerLabel} (${log.calorieDetail.model})`
+      : providerLabel;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -47,35 +59,48 @@ export function TrainingResultModal({ visible, log, onClose }: TrainingResultMod
             <Text style={styles.resultSubtitle}>{presetNameOrDefault(log)}</Text>
           </LinearGradient>
           <ScrollView contentContainerStyle={styles.resultContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.totalCard}>
-              <Text style={styles.totalLabel}>総消費カロリー</Text>
-              <Text style={styles.totalValue}>{log.caloriesBurned}</Text>
-              <Text style={styles.totalUnit}>kcal</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <View style={[styles.infoCard, styles.infoBlue]}>
-                <Text style={styles.infoLabel}>トレーニング時間</Text>
-                <Text style={styles.infoValue}>{formatDuration(log.durationSeconds)}</Text>
+            {pending ? (
+              <View style={styles.pendingCard}>
+                <ActivityIndicator size="large" color={tokens.palette.accentOrange} />
+                <Text style={styles.pendingText}>AI で消費カロリーを算出しています...</Text>
               </View>
-              <View style={[styles.infoCard, styles.infoPurple]}>
-                <Text style={styles.infoLabel}>完了種目</Text>
-                <Text style={styles.infoValue}>{log.exercises.length} 種目</Text>
-              </View>
-            </View>
-            <View style={styles.detailCard}>
-              <Text style={styles.detailTitle}>種目別詳細</Text>
-              {log.exercises.map(exercise => (
-                <View key={exercise.id} style={styles.detailRow}>
-                  <View>
-                    <Text style={styles.exerciseName}>{exercise.name}</Text>
-                    <Text style={styles.detailMeta}>
-                      重量 {exercise.weight ?? 0} kg / {exercise.sets} セット
-                    </Text>
-                  </View>
-                  <Text style={styles.detailCalories}>{calculateExerciseCalories(exercise)} kcal</Text>
+            ) : (
+              <>
+                <View style={styles.totalCard}>
+                  <Text style={styles.totalLabel}>総消費カロリー</Text>
+                  <Text style={styles.totalValue}>{log.caloriesBurned}</Text>
+                  <Text style={styles.totalUnit}>kcal</Text>
+                  <Text style={styles.sourceTag}>{providerMeta}</Text>
                 </View>
-              ))}
-            </View>
+                <View style={styles.infoRow}>
+                  <View style={[styles.infoCard, styles.infoBlue]}>
+                    <Text style={styles.infoLabel}>トレーニング時間</Text>
+                    <Text style={styles.infoValue}>{formatDuration(log.durationSeconds)}</Text>
+                  </View>
+                  <View style={[styles.infoCard, styles.infoPurple]}>
+                    <Text style={styles.infoLabel}>完了種目</Text>
+                    <Text style={styles.infoValue}>{log.exercises.length} 種目</Text>
+                  </View>
+                </View>
+                <View style={styles.detailCard}>
+                  <Text style={styles.detailTitle}>種目別詳細</Text>
+                  {log.exercises.map(exercise => (
+                    <View key={exercise.id} style={styles.detailRow}>
+                      <View>
+                        <Text style={styles.exerciseName}>{exercise.name}</Text>
+                        <Text style={styles.detailMeta}>
+                          重量 {exercise.weight ?? 0} kg / {exercise.sets} セット
+                        </Text>
+                        {perExerciseMap?.[exercise.id]?.reasoning ? (
+                          <Text style={styles.detailReason}>{perExerciseMap?.[exercise.id]?.reasoning}</Text>
+                        ) : null}
+                      </View>
+                      <Text style={styles.detailCalories}>{perExerciseMap?.[exercise.id]?.calories ?? 0} kcal</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
           </ScrollView>
           <Pressable onPress={onClose} style={styles.footerButton} accessibilityRole="button">
             <Text style={styles.footerButtonText}>完了</Text>
@@ -147,6 +172,11 @@ const styles = StyleSheet.create({
     color: '#b45309',
     fontSize: 16,
   },
+  sourceTag: {
+    color: '#9a3412',
+    fontSize: 12,
+    marginTop: 4,
+  },
   infoRow: {
     flexDirection: 'row',
     gap: tokens.spacing.md,
@@ -178,6 +208,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
+  pendingCard: {
+    borderRadius: 20,
+    padding: tokens.spacing.xl,
+    alignItems: 'center',
+    backgroundColor: '#fff9f3',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    gap: tokens.spacing.md,
+  },
+  pendingText: {
+    color: '#9a3412',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   detailTitle: {
     color: '#a855f7',
     fontWeight: '600',
@@ -197,6 +241,12 @@ const styles = StyleSheet.create({
   detailMeta: {
     color: '#475569',
     fontSize: 13,
+  },
+  detailReason: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginTop: 2,
+    maxWidth: 220,
   },
   detailCalories: {
     color: '#fb923c',
@@ -221,10 +271,13 @@ function formatDuration(seconds: number) {
   return `${minutes}分${remainder}秒`;
 }
 
-function calculateExerciseCalories(exercise: TrainingSessionLog['exercises'][number]) {
-  return Math.round(exercise.sets * exercise.reps * Math.max(exercise.weight ?? 5, 5) * 0.01);
-}
-
 function presetNameOrDefault(log: TrainingSessionLog) {
   return log.exercises[0]?.name ?? 'メニュー';
+}
+
+function buildPerExerciseCalorieMap(log: TrainingSessionLog) {
+  return log.calorieDetail.perExercise.reduce<Record<string, { calories: number; reasoning?: string }>>((acc, entry) => {
+    acc[entry.id] = { calories: entry.calories, reasoning: entry.reasoning };
+    return acc;
+  }, {});
 }

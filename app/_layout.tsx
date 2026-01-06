@@ -16,6 +16,10 @@
  * - constants/design-tokens.ts の背景グラデーションを参照してビジュアルを統一する。
  */
 
+// eslint-disable-next-line import/no-duplicates
+import 'react-native-gesture-handler';
+// eslint-disable-next-line import/no-duplicates
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -55,22 +59,24 @@ export default function RootLayout() {
   const statusBarStyle = colorScheme === 'dark' ? 'light' : 'dark';
 
   return (
-    <SafeAreaProvider>
-      <SupabaseProvider>
-        <AuthGate>
-          <BootstrapGate>
-            <LinearGradient colors={tokens.gradients.appBackground} style={styles.background}>
-              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                <Stack screenOptions={{ headerShown: false, contentStyle: styles.stackContent }}>
-                  <Stack.Screen name="(tabs)" />
-                </Stack>
-                <StatusBar style={statusBarStyle} />
-              </ThemeProvider>
-            </LinearGradient>
-          </BootstrapGate>
-        </AuthGate>
-      </SupabaseProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.gestureRoot}>
+      <SafeAreaProvider>
+        <SupabaseProvider>
+          <AuthGate>
+            <BootstrapGate>
+              <LinearGradient colors={tokens.gradients.appBackground} style={styles.background}>
+                <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                  <Stack screenOptions={{ headerShown: false, contentStyle: styles.stackContent }}>
+                    <Stack.Screen name="(tabs)" />
+                  </Stack>
+                  <StatusBar style={statusBarStyle} />
+                </ThemeProvider>
+              </LinearGradient>
+            </BootstrapGate>
+          </AuthGate>
+        </SupabaseProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -102,6 +108,9 @@ function BootstrapGate({ children }: BootstrapGateProps) {
 }
 
 const styles = StyleSheet.create({
+  gestureRoot: {
+    flex: 1,
+  },
   background: {
     flex: 1,
   },

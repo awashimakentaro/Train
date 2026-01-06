@@ -19,8 +19,10 @@
 
 import { create } from 'zustand';
 
+import { useBodyDataStore } from '@/hooks/useBodyDataStore';
 import { useCalorieStore } from '@/hooks/useCalorieStore';
 import { Exercise, useMenuPresetStore } from '@/hooks/useMenuPresetStore';
+import { MissingOpenAIKeyError, estimateTrainingCaloriesWithAI } from '@/lib/ai/calorieEstimationAgent';
 
 const DEFAULT_TRAINING_SECONDS = 60;
 
@@ -43,9 +45,21 @@ export interface TrainingSessionLog {
   id: string;
   finishedAt: string;
   durationSeconds: number;
-  exercises: { id: string; name: string; sets: number; reps: number; weight: number; trainingSeconds: number }[];
+  exercises: SessionExerciseSnapshot[];
   caloriesBurned: number;
+  calorieDetail: CalorieDetail;
+  calorieEstimatePending: boolean;
 }
+
+interface CalorieDetail {
+  provider: 'baseline' | 'openai';
+  perExercise: { id: string; name: string; calories: number; reasoning?: string }[];
+  reasoning?: string;
+  model?: string;
+  confidence?: number;
+}
+
+type SessionCompletedCallback = (log: TrainingSessionLog) => void;
 
 interface TrainingSessionSlice {
   phase: SessionPhase;
@@ -137,7 +151,7 @@ function buildExerciseQueue(exerciseIds?: string[]): SessionExerciseSnapshot[] {
 }
 
 /**
- * calculateCalories
+ * calculateBaselineCalories
  *
  * 【処理概要】
  * 種目ごとのボリューム (sets * reps * weight) から概算消費カロリーを算出する。
@@ -151,9 +165,95 @@ function buildExerciseQueue(exerciseIds?: string[]): SessionExerciseSnapshot[] {
  * 【副作用】
  * なし。
  */
-function calculateCalories(exercises: SessionExerciseSnapshot[]) {
+function calculateBaselineCalories(exercises: SessionExerciseSnapshot[]) {
   const volume = exercises.reduce((sum, exercise) => sum + exercise.sets * exercise.reps * Math.max(exercise.weight, 5), 0);
   return Math.round(volume * 0.09);
+}
+
+function calculateBaselineExerciseCalories(exercise: SessionExerciseSnapshot) {
+  return Math.round(exercise.sets * exercise.reps * Math.max(exercise.weight, 5) * 0.01);
+}
+
+function buildBaselineCalorieDetail(exercises: SessionExerciseSnapshot[]): CalorieDetail {
+  return {
+    provider: 'baseline',
+    perExercise: exercises.map(exercise => ({
+      id: exercise.id,
+      name: exercise.name,
+      calories: calculateBaselineExerciseCalories(exercise),
+      reasoning: '重量×レップ×セットの簡易概算',
+    })),
+    reasoning: '重量とボリュームに基づく簡易計算',
+  } satisfies CalorieDetail;
+}
+
+function buildAiCalorieDetail(
+  exercises: SessionExerciseSnapshot[],
+  result: { perExercise: { id: string; name: string; calories: number; reasoning?: string }[]; reasoning: string; model: string; confidence?: number },
+): CalorieDetail {
+  const baseline = buildBaselineCalorieDetail(exercises);
+  const aiMap = new Map(result.perExercise.map(item => [item.id || item.name, item]));
+  return {
+    provider: 'openai',
+    perExercise: exercises.map(exercise => {
+      const aiEntry = aiMap.get(exercise.id) ?? aiMap.get(exercise.name);
+      if (aiEntry) {
+        return {
+          id: exercise.id,
+          name: exercise.name,
+          calories: Math.max(0, Math.round(aiEntry.calories)),
+          reasoning: aiEntry.reasoning,
+        };
+      }
+      return baseline.perExercise.find(item => item.id === exercise.id) ?? {
+        id: exercise.id,
+        name: exercise.name,
+        calories: calculateBaselineExerciseCalories(exercise),
+        reasoning: 'AI 推定値が不足したためベース値を使用',
+      };
+    }),
+    reasoning: result.reasoning,
+    model: result.model,
+    confidence: result.confidence,
+  } satisfies CalorieDetail;
+}
+
+function applyCalorieDetailToSlice(
+  state: TrainingSessionSlice,
+  sessionId: string,
+  calories: number,
+  detail: CalorieDetail,
+): TrainingSessionSlice {
+  const applyDetail = (log: TrainingSessionLog | undefined) =>
+    log && log.id === sessionId
+      ? { ...log, caloriesBurned: calories, calorieDetail: detail, calorieEstimatePending: false }
+      : log;
+  const updatedSessions = state.completedSessions.map(session =>
+    session.id === sessionId
+      ? { ...session, caloriesBurned: calories, calorieDetail: detail, calorieEstimatePending: false }
+      : session,
+  );
+  return {
+    ...state,
+    completedSessions: updatedSessions,
+    lastCompletedSession: applyDetail(state.lastCompletedSession),
+  };
+}
+
+function setCalorieEstimatePending(
+  state: TrainingSessionSlice,
+  sessionId: string,
+  pending: boolean,
+): TrainingSessionSlice {
+  const updateLog = (log?: TrainingSessionLog) =>
+    log && log.id === sessionId ? { ...log, calorieEstimatePending: pending } : log;
+  return {
+    ...state,
+    completedSessions: state.completedSessions.map(log =>
+      log.id === sessionId ? { ...log, calorieEstimatePending: pending } : log,
+    ),
+    lastCompletedSession: updateLog(state.lastCompletedSession),
+  };
 }
 
 function getCurrentTrainingDuration(state: TrainingSessionSlice) {
@@ -179,15 +279,9 @@ function getCurrentTrainingDuration(state: TrainingSessionSlice) {
 function createSessionLog(state: TrainingSessionSlice, finishedAt: string): TrainingSessionLog {
   const id = createSessionId();
   const durationSeconds = state.totalElapsedSeconds;
-  const exercises = state.exercises.map(exercise => ({
-    id: exercise.id,
-    name: exercise.name,
-    sets: exercise.sets,
-    reps: exercise.reps,
-    weight: exercise.weight,
-    trainingSeconds: exercise.trainingSeconds,
-  }));
-  const caloriesBurned = calculateCalories(state.exercises);
+  const exercises = state.exercises.map(exercise => ({ ...exercise }));
+  const caloriesBurned = calculateBaselineCalories(state.exercises);
+  const calorieDetail = buildBaselineCalorieDetail(state.exercises);
 
   return {
     id,
@@ -195,6 +289,8 @@ function createSessionLog(state: TrainingSessionSlice, finishedAt: string): Trai
     durationSeconds,
     exercises,
     caloriesBurned,
+    calorieDetail,
+    calorieEstimatePending: false,
   };
 }
 
@@ -208,12 +304,12 @@ function createSessionLog(state: TrainingSessionSlice, finishedAt: string): Trai
  * advanceFromTraining 内。
  *
  * 【入力 / 出力】
- * TrainingSessionSlice / TrainingSessionSlice。
+ * TrainingSessionSlice, callback / TrainingSessionSlice。
  *
  * 【副作用】
  * useCalorieStore.getState().addTrainingEntry を呼び出す。
  */
-function finalizeSession(state: TrainingSessionSlice): TrainingSessionSlice {
+function finalizeSession(state: TrainingSessionSlice, onCompleted?: SessionCompletedCallback): TrainingSessionSlice {
   const finishedAt = new Date().toISOString();
   const log = createSessionLog(state, finishedAt);
   const mainName = log.exercises[0]?.name ?? 'セッション';
@@ -230,6 +326,8 @@ function finalizeSession(state: TrainingSessionSlice): TrainingSessionSlice {
     .catch(error => {
       console.error('[training] addTrainingEntry failed', error);
     });
+
+  onCompleted?.(log);
 
   return {
     ...state,
@@ -254,15 +352,15 @@ function finalizeSession(state: TrainingSessionSlice): TrainingSessionSlice {
  * markSetComplete, tick。
  *
  * 【入力 / 出力】
- * TrainingSessionSlice / TrainingSessionSlice。
+ * TrainingSessionSlice, callback / TrainingSessionSlice。
  *
  * 【副作用】
  * finalizeSession を呼ぶ場合に限り、カロリーストアを更新する。
  */
-function advanceFromTraining(state: TrainingSessionSlice): TrainingSessionSlice {
+function advanceFromTraining(state: TrainingSessionSlice, onCompleted?: SessionCompletedCallback): TrainingSessionSlice {
   const currentExercise = state.exercises[state.exerciseIndex];
   if (!currentExercise) {
-    return finalizeSession(state);
+    return finalizeSession(state, onCompleted);
   }
 
   const hasMoreSets = state.currentSet < currentExercise.sets;
@@ -286,7 +384,7 @@ function advanceFromTraining(state: TrainingSessionSlice): TrainingSessionSlice 
     };
   }
 
-  return finalizeSession(state);
+  return finalizeSession(state, onCompleted);
 }
 
 /**
@@ -332,8 +430,57 @@ const initialSlice: TrainingSessionSlice = {
  * 【処理概要】
  * 状態マシンとアクションを束ねた Zustand フックを生成する。
  */
-export const useTrainingSession = create<TrainingSessionState>((set, get) => ({
-  ...initialSlice,
+export const useTrainingSession = create<TrainingSessionState>((set, get) => {
+  const triggerAiCalorieEstimation: SessionCompletedCallback = log => {
+    const bodyStore = useBodyDataStore.getState();
+    const latest = bodyStore.latest ? bodyStore.latest() : null;
+    const payload = {
+      user: {
+        weightKg: latest?.weight ?? 70,
+        heightCm: latest?.heightCm ?? undefined,
+        gender: latest?.gender ?? undefined,
+        bodyFat: latest?.bodyFat ?? undefined,
+        muscleMass: latest?.muscleMass ?? undefined,
+      },
+      session: {
+        durationSeconds: log.durationSeconds,
+      },
+      exercises: log.exercises.map(exercise => ({
+        id: exercise.id,
+        name: exercise.name,
+        sets: exercise.sets,
+        reps: exercise.reps,
+        weight: exercise.weight,
+        restSeconds: exercise.restSeconds,
+        trainingSeconds: exercise.trainingSeconds,
+      })),
+    };
+
+    set(state => setCalorieEstimatePending(state, log.id, true));
+
+    estimateTrainingCaloriesWithAI(payload)
+      .then(result => {
+        const detail = buildAiCalorieDetail(log.exercises, result);
+        set(state => applyCalorieDetailToSlice(state, log.id, result.totalCalories, detail));
+        useCalorieStore
+          .getState()
+          .updateTrainingEntryCalories(log.id, result.totalCalories)
+          .catch(error => {
+            console.error('[training] updateTrainingEntryCalories failed', error);
+          });
+      })
+      .catch(error => {
+        set(state => setCalorieEstimatePending(state, log.id, false));
+        if (error instanceof MissingOpenAIKeyError) {
+          console.info('[training] AI calorie estimation skipped', error.message);
+          return;
+        }
+        console.error('[training] AI calorie estimation failed', error);
+      });
+  };
+
+  return {
+    ...initialSlice,
   /**
    * startSession
    *
@@ -385,7 +532,7 @@ export const useTrainingSession = create<TrainingSessionState>((set, get) => ({
   markSetComplete: () => {
     set(state => {
       if (state.phase !== 'training') return state;
-      const updated = advanceFromTraining({ ...state });
+      const updated = advanceFromTraining({ ...state }, triggerAiCalorieEstimation);
       return updated;
     });
   },
@@ -509,7 +656,7 @@ export const useTrainingSession = create<TrainingSessionState>((set, get) => ({
         return { ...state, phaseRemainingSeconds, totalElapsedSeconds };
       }
       if (state.phase === 'training') {
-        const advanced = advanceFromTraining({ ...state, phaseRemainingSeconds: 0, totalElapsedSeconds });
+        const advanced = advanceFromTraining({ ...state, phaseRemainingSeconds: 0, totalElapsedSeconds }, triggerAiCalorieEstimation);
         return advanced;
       }
       if (state.phase === 'rest') {
@@ -519,4 +666,5 @@ export const useTrainingSession = create<TrainingSessionState>((set, get) => ({
       return { ...state, totalElapsedSeconds };
     });
   },
-}));
+  };
+});

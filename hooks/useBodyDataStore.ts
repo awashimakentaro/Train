@@ -18,8 +18,11 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabaseClient';
 import type { BodyEntryRow } from '@/types/supabase';
 
+export type BodyGender = 'male' | 'female' | 'other';
+
 export type BodyDataField =
   | 'weight'
+  | 'heightCm'
   | 'bodyFat'
   | 'muscleMass'
   | 'bmi'
@@ -29,6 +32,8 @@ export type BodyDataField =
 export interface BodyDataRecord {
   date: string; // YYYY-MM-DD
   weight: number;
+  heightCm: number;
+  gender: BodyGender | null;
   bodyFat: number;
   muscleMass: number;
   bmi: number;
@@ -51,12 +56,15 @@ interface BodyDataState {
   getSeries: (field: BodyDataField, length?: number) => number[];
 }
 
-const DEFAULT_HEIGHT_M = 1.72;
+const DEFAULT_HEIGHT_CM = 172;
+const DEFAULT_HEIGHT_M = DEFAULT_HEIGHT_CM / 100;
 
 function mapRow(row: BodyEntryRow): BodyDataRecord {
   return {
     date: row.entry_date,
     weight: row.weight ?? 0,
+    heightCm: row.height_cm ?? 0,
+    gender: row.gender ?? null,
     bodyFat: row.body_fat ?? 0,
     muscleMass: row.muscle_mass ?? 0,
     bmi: row.bmi ?? 0,
@@ -72,13 +80,17 @@ function normalizeNumericField(value: number | undefined, digits = 1): number | 
 
 function buildRecord(base: BodyDataRecord, patch: Partial<BodyDataRecord>, date: string): BodyDataRecord {
   const weight = normalizeNumericField(patch.weight ?? base.weight);
+  const heightCm = normalizeNumericField(patch.heightCm ?? base.heightCm, 1);
+  const heightMeters = heightCm ? heightCm / 100 : DEFAULT_HEIGHT_M;
   const bmi = normalizeNumericField(
-    patch.bmi ?? (weight !== undefined ? weight / (DEFAULT_HEIGHT_M * DEFAULT_HEIGHT_M) : base.bmi),
+    patch.bmi ?? (weight !== undefined && heightMeters ? weight / (heightMeters * heightMeters) : base.bmi),
     1,
   );
   return {
     date,
     weight: weight ?? base.weight,
+    heightCm: heightCm ?? base.heightCm,
+    gender: patch.gender ?? base.gender ?? null,
     bodyFat: normalizeNumericField(patch.bodyFat ?? base.bodyFat) ?? base.bodyFat,
     muscleMass: normalizeNumericField(patch.muscleMass ?? base.muscleMass) ?? base.muscleMass,
     bmi: bmi ?? base.bmi,
@@ -92,6 +104,8 @@ function toRow(userId: string, record: BodyDataRecord) {
     user_id: userId,
     entry_date: record.date,
     weight: record.weight,
+    height_cm: record.heightCm,
+    gender: record.gender,
     body_fat: record.bodyFat,
     muscle_mass: record.muscleMass,
     bmi: record.bmi,
@@ -131,6 +145,8 @@ export const useBodyDataStore = create<BodyDataState>((set, get) => ({
       get().history.find(record => record.date === date) ?? {
         date,
         weight: entry.weight ?? 0,
+        heightCm: entry.heightCm ?? DEFAULT_HEIGHT_CM,
+        gender: entry.gender ?? null,
         bodyFat: entry.bodyFat ?? 0,
         muscleMass: entry.muscleMass ?? 0,
         bmi: entry.bmi ?? 0,

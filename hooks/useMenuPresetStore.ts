@@ -46,6 +46,7 @@ export interface MenuPreset {
 interface MenuPresetState {
   presets: MenuPreset[];
   activePresetId: string;
+  previousPresetId?: string;
   userId: string | null;
   loading: boolean;
   error?: string;
@@ -355,8 +356,23 @@ export const useMenuPresetStore = create<MenuPresetState>((set, get) => ({
     const [moved] = sequence.splice(sourceIndex, 1);
     if (!moved) return;
     sequence.splice(targetIndex, 0, moved);
-    const updates = sequence.map((exercise, index) => ({ id: exercise.id, order_index: index }));
-    const { error } = await supabase.from('exercises').upsert(updates);
+    const updates = sequence.map((exercise, index) => ({
+      id: exercise.id,
+      order_index: index,
+      user_id: userId,
+      preset_id: preset.id,
+      name: exercise.name,
+      sets: exercise.sets,
+      reps: exercise.reps,
+      weight: exercise.weight,
+      rest_seconds: exercise.restSeconds,
+      training_seconds: exercise.trainingSeconds,
+      note: exercise.note ?? null,
+      youtube_url: exercise.youtubeUrl ?? null,
+      focus_area: exercise.focusArea,
+      enabled: exercise.enabled,
+    }));
+    const { error } = await supabase.from('exercises').upsert(updates, { onConflict: 'id' });
     if (error) {
       console.error('[supabase] reorder exercises failed', error);
       throw new Error(error.message);

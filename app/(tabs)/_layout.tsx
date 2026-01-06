@@ -38,6 +38,7 @@ import { MainTabBar } from '@/components/navigation/MainTabBar';
 export default function TabLayout() {
   return (
     <Tabs
+      initialRouteName="menu"
       tabBar={props => <MainTabBar {...props} />}
       screenOptions={{
         headerShown: false,

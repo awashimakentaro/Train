@@ -49,6 +49,8 @@ create table if not exists public.body_entries (
   user_id uuid not null references auth.users(id) on delete cascade,
   entry_date date not null,
   weight numeric,
+  height_cm numeric,
+  gender text check (gender in ('male','female','other')),
   body_fat numeric,
   muscle_mass numeric,
   bmi numeric,

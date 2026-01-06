@@ -25,7 +25,8 @@ import { BodyTrendChart } from '@/components/body-data/BodyTrendChart';
 import { AddBodyDataModal, BodyDataFormPayload } from '@/components/body-data/AddBodyDataModal';
 import { BodyDataHistoryModal } from '@/components/body-data/BodyDataHistoryModal';
 import { tokens } from '@/constants/design-tokens';
-import { BodyDataField, BodyDataRecord, useBodyDataStore } from '@/hooks/useBodyDataStore';
+import { BodyDataField, BodyDataRecord, BodyGender, useBodyDataStore } from '@/hooks/useBodyDataStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface CardMeta {
   field: BodyDataField;
@@ -36,6 +37,7 @@ interface CardMeta {
 
 const CARD_CONFIG: CardMeta[] = [
   { field: 'weight', title: '体重', unit: 'kg', accentColor: tokens.palette.accentPurple },
+  { field: 'heightCm', title: '身長', unit: 'cm', accentColor: tokens.palette.accentYellow },
   { field: 'bodyFat', title: '体脂肪率', unit: '%', accentColor: tokens.palette.accentPink },
   { field: 'muscleMass', title: '筋肉量', unit: 'kg', accentColor: tokens.palette.accentBlue },
   { field: 'bmi', title: 'BMI', unit: '', accentColor: tokens.palette.accentOrange },
@@ -59,8 +61,17 @@ const CARD_CONFIG: CardMeta[] = [
  * ストア操作（addEntry / updateEntry / removeEntry）。
  */
 export default function BodyScreen() {
-  const { history, latest, addEntry, updateEntry, removeEntry, getTrend, getSeries } = useBodyDataStore();
-  const latestData = latest();
+  const history = useBodyDataStore(state => state.history);
+  const latestData = useBodyDataStore(state => state.latest());
+  const { addEntry, updateEntry, removeEntry, getTrend, getSeries } = useBodyDataStore(
+    useShallow(state => ({
+      addEntry: state.addEntry,
+      updateEntry: state.updateEntry,
+      removeEntry: state.removeEntry,
+      getTrend: state.getTrend,
+      getSeries: state.getSeries,
+    })),
+  );
   const trendConfigs = useMemo(
     () => [
       { key: 'weight', title: '体重の推移', unit: 'kg', color: tokens.palette.accentPurple },
@@ -86,6 +97,16 @@ export default function BodyScreen() {
   const insets = useSafeAreaInsets();
 
   const cards = useMemo(() => CARD_CONFIG, []);
+  const profileMeta = useMemo(
+    () => [
+      { label: '性別', value: formatGenderLabel(latestData?.gender) },
+      {
+        label: '最新測定日',
+        value: latestData ? latestData.date : '未記録',
+      },
+    ],
+    [latestData],
+  );
 
   /**
    * handleSubmit
@@ -170,6 +191,14 @@ export default function BodyScreen() {
               <Text style={styles.heroEyebrow}>身体データ</Text>
               <Text style={styles.heroTitle}>あなたの成長を記録</Text>
               <Text style={styles.heroSubtitle}>毎日の小さな変化を見逃さない</Text>
+              <View style={styles.profileRow}>
+                {profileMeta.map(meta => (
+                  <View key={meta.label} style={styles.profileBadge}>
+                    <Text style={styles.profileBadgeLabel}>{meta.label}</Text>
+                    <Text style={styles.profileBadgeValue}>{meta.value}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
         </LinearGradient>
@@ -210,6 +239,7 @@ export default function BodyScreen() {
         visible={isAddModalVisible}
         onClose={() => setAddModalVisible(false)}
         onSubmit={handleSubmit}
+        defaultGender={latestData?.gender ?? null}
       />
       {historyField ? (
         <BodyDataHistoryModal
@@ -270,6 +300,25 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     marginTop: 4,
   },
+  profileRow: {
+    flexDirection: 'row',
+    gap: tokens.spacing.md,
+    marginTop: tokens.spacing.md,
+  },
+  profileBadge: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: tokens.radii.lg,
+    paddingVertical: tokens.spacing.xs,
+    paddingHorizontal: tokens.spacing.md,
+  },
+  profileBadgeLabel: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: tokens.typography.caption,
+  },
+  profileBadgeValue: {
+    color: '#fff',
+    fontWeight: tokens.typography.weightMedium,
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -314,3 +363,30 @@ const styles = StyleSheet.create({
     marginTop: tokens.spacing.md,
   },
 });
+/**
+ * formatGenderLabel
+ *
+ * 【処理概要】
+ * enum 値を UI 表示用の日本語ラベルへ変換する。
+ *
+ * 【呼び出し元】
+ * BodyScreen 内。
+ *
+ * 【入力 / 出力】
+ * gender / string。
+ *
+ * 【副作用】
+ * なし。
+ */
+function formatGenderLabel(gender?: BodyGender | null) {
+  switch (gender) {
+    case 'male':
+      return '男性';
+    case 'female':
+      return '女性';
+    case 'other':
+      return 'その他';
+    default:
+      return '未登録';
+  }
+}

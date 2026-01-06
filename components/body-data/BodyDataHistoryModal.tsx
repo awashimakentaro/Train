@@ -32,6 +32,7 @@ interface BodyDataHistoryModalProps {
 
 const FIELD_LABEL: Record<BodyDataField, string> = {
   weight: '体重',
+  heightCm: '身長',
   bodyFat: '体脂肪率',
   muscleMass: '筋肉量',
   bmi: 'BMI',
@@ -67,6 +68,7 @@ export function BodyDataHistoryModal({ visible, field, history, onClose, onUpdat
 
   const unit = useMemo(() => {
     if (field === 'weight' || field === 'muscleMass') return 'kg';
+    if (field === 'heightCm') return 'cm';
     if (field === 'visceralFat') return '';
     if (field === 'bmi') return '';
     return '%';

@@ -15,14 +15,12 @@
  * - hooks/useTrainingSession.ts の状態を参照して効果音を決定する。
  */
 
-import { useCallback, useEffect, useRef } from 'react';
-import { Audio } from 'expo-av';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 
 import { SessionPhase } from '@/hooks/useTrainingSession';
 
 type TimerCue = 'trainingStart' | 'restStart' | 'sessionComplete' | 'countdown';
-
-type LoadedSoundMap = Partial<Record<TimerCue, Audio.Sound>>;
 
 const CUE_ASSETS: Record<TimerCue, number> = {
   trainingStart: require('@/assets/sounds/training-start.wav'),
@@ -35,73 +33,6 @@ export interface TimerSoundAgentOptions {
   phase: SessionPhase;
   phaseRemainingSeconds: number;
   isPaused: boolean;
-}
-
-/**
- * loadSoundForCue
- *
- * 【処理概要】
- * 指定されたキュー用の Audio.Sound インスタンスを生成する。
- *
- * 【呼び出し元】
- * useTimerSoundAgent 内部。
- *
- * 【入力 / 出力】
- * cue / Audio.Sound | null。
- *
- * 【副作用】
- * Audio.Sound.createAsync を呼び出し、サウンドリソースをメモリに展開する。
- */
-async function loadSoundForCue(cue: TimerCue): Promise<Audio.Sound | null> {
-  try {
-    const { sound } = await Audio.Sound.createAsync(CUE_ASSETS[cue], { volume: 1 });
-    return sound;
-  } catch (error) {
-    console.warn('[timer-sound] failed to load sound', cue, error);
-    return null;
-  }
-}
-
-/**
- * unloadAllSounds
- *
- * 【処理概要】
- * ロード済みの全効果音を解放してメモリリークを防ぐ。
- *
- * 【呼び出し元】
- * useTimerSoundAgent のクリーンアップ。
- *
- * 【入力 / 出力】
- * soundMap / Promise<void>。
- *
- * 【副作用】
- * Audio.Sound.unloadAsync を呼び出す。
- */
-async function unloadAllSounds(soundMap: LoadedSoundMap) {
-  const unloads = Object.values(soundMap)
-    .filter((sound): sound is Audio.Sound => !!sound)
-    .map(sound => sound.unloadAsync().catch(() => {}));
-  await Promise.all(unloads);
-}
-
-/**
- * replaySoundFromStart
- *
- * 【処理概要】
- * 渡されたサウンドの再生位置を先頭に戻して再生する。
- *
- * 【呼び出し元】
- * useTimerSoundAgent 内。
- *
- * 【入力 / 出力】
- * sound / Promise<void>。
- *
- * 【副作用】
- * サウンドを再生する。
- */
-async function replaySoundFromStart(sound: Audio.Sound) {
-  await sound.setPositionAsync(0);
-  await sound.playAsync();
 }
 
 /**
@@ -120,63 +51,65 @@ async function replaySoundFromStart(sound: Audio.Sound) {
  * Audio.Sound を再生する。
  */
 export function useTimerSoundAgent({ phase, phaseRemainingSeconds, isPaused }: TimerSoundAgentOptions) {
-  const soundsRef = useRef<LoadedSoundMap>({});
-  const readyRef = useRef(false);
   const previousPhaseRef = useRef<SessionPhase>('idle');
   const countdownSecondRef = useRef<number | null>(null);
+  const trainingPlayer = useAudioPlayer(CUE_ASSETS.trainingStart);
+  const restPlayer = useAudioPlayer(CUE_ASSETS.restStart);
+  const completePlayer = useAudioPlayer(CUE_ASSETS.sessionComplete);
+  const countdownPlayer = useAudioPlayer(CUE_ASSETS.countdown);
+
+  const trainingStatus = useAudioPlayerStatus(trainingPlayer);
+  const restStatus = useAudioPlayerStatus(restPlayer);
+  const completeStatus = useAudioPlayerStatus(completePlayer);
+  const countdownStatus = useAudioPlayerStatus(countdownPlayer);
+
+  const cuePlayers = useMemo(
+    () => ({
+      trainingStart: trainingPlayer,
+      restStart: restPlayer,
+      sessionComplete: completePlayer,
+      countdown: countdownPlayer,
+    }),
+    [trainingPlayer, restPlayer, completePlayer, countdownPlayer],
+  );
+
+  const playersReady = useMemo(() => {
+    return (
+      Boolean(trainingStatus?.isLoaded) &&
+      Boolean(restStatus?.isLoaded) &&
+      Boolean(completeStatus?.isLoaded) &&
+      Boolean(countdownStatus?.isLoaded)
+    );
+  }, [trainingStatus?.isLoaded, restStatus?.isLoaded, completeStatus?.isLoaded, countdownStatus?.isLoaded]);
 
   useEffect(() => {
-    let disposed = false;
-    const prepare = async () => {
+    setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      allowsRecordingIOS: false,
+      staysActiveInBackground: false,
+    }).catch(error => {
+      console.warn('[timer-sound] failed to set audio mode', error);
+    });
+  }, []);
+
+  const playCue = useCallback(
+    (cue: TimerCue) => {
+      if (!playersReady) return;
+      const player = cuePlayers[cue];
+      if (!player) return;
       try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          allowsRecordingIOS: false,
-          staysActiveInBackground: false,
-        });
+        player.seekTo(0).catch(() => {});
+        player.play();
       } catch (error) {
-        console.warn('[timer-sound] failed to set audio mode', error);
+        console.warn('[timer-sound] failed to play cue', cue, error);
       }
-      const cueOrder: TimerCue[] = ['trainingStart', 'restStart', 'sessionComplete', 'countdown'];
-      for (const cue of cueOrder) {
-        if (disposed) break;
-        const sound = await loadSoundForCue(cue);
-        if (disposed) {
-          if (sound) {
-            await sound.unloadAsync().catch(() => {});
-          }
-          break;
-        }
-        if (sound) {
-          soundsRef.current[cue] = sound;
-        }
-      }
-      if (!disposed) {
-        readyRef.current = true;
-      }
-    };
-
-    prepare();
-    return () => {
-      disposed = true;
-      const sounds = soundsRef.current;
-      soundsRef.current = {};
-      readyRef.current = false;
-      countdownSecondRef.current = null;
-      unloadAllSounds(sounds).catch(() => {});
-    };
-  }, []);
-
-  const playCue = useCallback((cue: TimerCue) => {
-    if (!readyRef.current) return;
-    const sound = soundsRef.current[cue];
-    if (!sound) return;
-    replaySoundFromStart(sound).catch(() => {});
-  }, []);
+    },
+    [cuePlayers, playersReady],
+  );
 
   useEffect(() => {
     const previous = previousPhaseRef.current;
-    if (!readyRef.current) {
+    if (!playersReady) {
       previousPhaseRef.current = phase;
       return;
     }
@@ -196,7 +129,7 @@ export function useTimerSoundAgent({ phase, phaseRemainingSeconds, isPaused }: T
   }, [phase, playCue]);
 
   useEffect(() => {
-    if (!readyRef.current) return;
+    if (!playersReady) return;
     if (phase !== 'training' && phase !== 'rest') {
       countdownSecondRef.current = null;
       return;
@@ -217,5 +150,5 @@ export function useTimerSoundAgent({ phase, phaseRemainingSeconds, isPaused }: T
     }
     countdownSecondRef.current = secondsLeft;
     playCue('countdown');
-  }, [phaseRemainingSeconds, phase, isPaused, playCue]);
+  }, [phaseRemainingSeconds, phase, isPaused, playCue, playersReady]);
 }

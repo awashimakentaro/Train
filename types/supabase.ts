@@ -44,6 +44,8 @@ export interface BodyEntryRow {
   user_id: string;
   entry_date: string;
   weight: number | null;
+  height_cm: number | null;
+  gender: 'male' | 'female' | 'other' | null;
   body_fat: number | null;
   muscle_mass: number | null;
   bmi: number | null;

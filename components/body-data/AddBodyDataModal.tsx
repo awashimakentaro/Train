@@ -15,20 +15,24 @@
  * - hooks/useBodyDataStore.ts の addEntry と連携
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform } from 'react-native';
 
 import { tokens } from '@/constants/design-tokens';
+import { BodyGender } from '@/hooks/useBodyDataStore';
 
 interface AddBodyDataModalProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (payload: BodyDataFormPayload) => Promise<void>;
+  defaultGender?: BodyGender | null;
 }
 
 export interface BodyDataFormPayload {
   date?: string;
   weight?: number;
+  heightCm?: number;
+  gender?: BodyGender;
   bodyFat?: number;
   muscleMass?: number;
   bmi?: number;
@@ -38,6 +42,7 @@ export interface BodyDataFormPayload {
 
 const FIELD_DEFS = [
   { key: 'weight', label: '体重 (kg)', placeholder: '72.0' },
+  { key: 'heightCm', label: '身長 (cm)', placeholder: '172.0' },
   { key: 'bodyFat', label: '体脂肪率 (%)', placeholder: '15.2' },
   { key: 'muscleMass', label: '筋肉量 (kg)', placeholder: '55.0' },
   { key: 'bmi', label: 'BMI', placeholder: '23.4' },
@@ -46,6 +51,12 @@ const FIELD_DEFS = [
 ] as const;
 
 type FieldKey = (typeof FIELD_DEFS)[number]['key'];
+
+const GENDER_OPTIONS: { value: BodyGender; label: string }[] = [
+  { value: 'male', label: '男性' },
+  { value: 'female', label: '女性' },
+  { value: 'other', label: 'その他' },
+];
 
 /**
  * createInitialForm
@@ -81,14 +92,21 @@ function createInitialForm(): Record<FieldKey, string> {
  * 【副作用】
  * なし。送信時のみ親ハンドラが呼ばれる。
  */
-export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModalProps) {
+export function AddBodyDataModal({ visible, onClose, onSubmit, defaultGender = null }: AddBodyDataModalProps) {
   const [form, setForm] = useState<Record<FieldKey, string>>(createInitialForm());
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [submitting, setSubmitting] = useState(false);
+  const [gender, setGender] = useState<BodyGender | null>(defaultGender);
 
   const isDisabled = useMemo(() => {
     return !Object.values(form).some(value => value.trim().length > 0);
   }, [form]);
+
+  useEffect(() => {
+    if (visible) {
+      setGender(defaultGender ?? null);
+    }
+  }, [visible, defaultGender]);
 
   /**
    * handleSubmit
@@ -113,12 +131,16 @@ export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModa
         payload[def.key] = value;
       }
     });
+    if (gender) {
+      payload.gender = gender;
+    }
     if (submitting) return;
     setSubmitting(true);
     try {
       await onSubmit(payload);
       setForm(createInitialForm());
       setDate(new Date().toISOString().slice(0, 10));
+      setGender(defaultGender ?? null);
     } catch (error) {
       Alert.alert('保存に失敗しました', error instanceof Error ? error.message : '不明なエラー');
     } finally {
@@ -142,6 +164,22 @@ export function AddBodyDataModal({ visible, onClose, onSubmit }: AddBodyDataModa
               placeholderTextColor="#cbd5f5"
               style={styles.dateInput}
             />
+            <View style={styles.genderSection}>
+              <Text style={styles.label}>性別</Text>
+              <View style={styles.genderRow}>
+                {GENDER_OPTIONS.map(option => (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => setGender(option.value)}
+                    style={[styles.genderChip, gender === option.value && styles.genderChipActive]}
+                    accessibilityRole="button">
+                    <Text style={[styles.genderChipText, gender === option.value && styles.genderChipTextActive]}>
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
             {FIELD_DEFS.map(field => (
               <View key={field.key} style={styles.fieldRow}>
                 <Text style={styles.label}>{field.label}</Text>
@@ -209,6 +247,32 @@ const styles = StyleSheet.create({
   },
   fieldRow: {
     marginBottom: tokens.spacing.md,
+  },
+  genderSection: {
+    marginBottom: tokens.spacing.md,
+    gap: tokens.spacing.xs,
+  },
+  genderRow: {
+    flexDirection: 'row',
+    gap: tokens.spacing.sm,
+  },
+  genderChip: {
+    borderRadius: tokens.radii.full,
+    borderWidth: 1,
+    borderColor: '#cbd5f5',
+    paddingVertical: tokens.spacing.xs,
+    paddingHorizontal: tokens.spacing.md,
+  },
+  genderChipActive: {
+    backgroundColor: '#ede9fe',
+    borderColor: '#7c3aed',
+  },
+  genderChipText: {
+    color: '#475569',
+  },
+  genderChipTextActive: {
+    color: '#6d28d9',
+    fontWeight: tokens.typography.weightMedium,
   },
   label: {
     color: '#475569',

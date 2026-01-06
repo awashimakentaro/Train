@@ -57,6 +57,7 @@ export default function MenuScreen() {
     updateExercise,
     removeExercise,
     toggleExercise,
+    reorderExercise,
     loading,
   } = useMenuPresetStore();
   const { signOut } = useSupabase();
@@ -78,6 +79,15 @@ export default function MenuScreen() {
       await signOut();
     } catch (error) {
       Alert.alert('ログアウトに失敗しました', error instanceof Error ? error.message : '不明なエラー');
+    }
+  };
+
+  const handleMoveExercise = async (from: number, to: number) => {
+    if (to < 0 || to >= preset.exercises.length || from === to) return;
+    try {
+      await reorderExercise(from, to);
+    } catch (error) {
+      Alert.alert('並び替えに失敗しました', error instanceof Error ? error.message : '不明なエラー');
     }
   };
 
@@ -137,13 +147,15 @@ export default function MenuScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <LinearGradient colors={['#7c3aed', '#ec4899']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
           <View style={styles.heroHeader}>
-            <View style={styles.heroIconContainer}>
-              <Feather name="activity" size={28} color="white" />
-            </View>
-            <View style={styles.heroTextBlock}>
-              <Text style={styles.heroEyebrow}>カスタムプラン</Text>
-              <Text style={styles.heroLabel}>メニューを整えてベストな1日へ</Text>
-              <Text style={styles.heroSubText}>目的に合わせて種目をすぐ呼び出せます</Text>
+            <View style={styles.heroHeaderLeft}>
+              <View style={styles.heroIconContainer}>
+                <Feather name="activity" size={28} color="white" />
+              </View>
+              <View style={styles.heroTextBlock}>
+                <Text style={styles.heroEyebrow}>カスタムプラン</Text>
+                <Text style={styles.heroLabel}>メニューを整えてベストな1日へ</Text>
+                <Text style={styles.heroSubText}>目的に合わせて種目をすぐ呼び出せます</Text>
+              </View>
             </View>
           </View>
           <View style={styles.heroMetaRow}>
@@ -151,17 +163,6 @@ export default function MenuScreen() {
               <Feather name="check-circle" size={16} color="#22c55e" />
               <Text style={styles.heroChipText}>有効 {enabledCount} 種目</Text>
             </View>
-            <View style={styles.heroActionGroup}>
-              <Pressable
-                onPress={() => setShowCreateMenuModal(true)}
-                style={styles.heroCta}
-                accessibilityRole="button">
-                <Feather name="plus" size={18} color="#7c3aed" />
-                <Text style={styles.heroCtaText}>新しいメニュー</Text>
-              </Pressable>
-            </View>
-          </View>
-          <View style={styles.heroFooter}>
             <Pressable onPress={handleSignOut} style={styles.heroPowerButton} accessibilityRole="button">
               <Feather name="power" size={14} color="#7c3aed" />
               <Text style={styles.heroPowerText}>ログアウト</Text>
@@ -170,6 +171,13 @@ export default function MenuScreen() {
         </LinearGradient>
 
         <View style={styles.section}>
+          <Pressable
+            onPress={() => setShowCreateMenuModal(true)}
+            style={styles.newMenuButton}
+            accessibilityRole="button">
+            <Feather name="plus" size={18} color={tokens.palette.accentPurple} />
+            <Text style={styles.newMenuText}>新しいメニューを作成</Text>
+          </Pressable>
           <View style={styles.sectionTop}>
             <Text style={styles.sectionTitle}>メニュー選択</Text>
             <Text style={styles.sectionCaption}>プリセットから今日のプランを選びます</Text>
@@ -213,13 +221,21 @@ export default function MenuScreen() {
               <Text style={styles.emptyText}>種目がありません。種目追加からメニューを構成してください。</Text>
             </View>
           ) : (
-            preset.exercises.map(exercise => (
+            preset.exercises.map((exercise, index) => (
               <ExerciseCard
                 key={exercise.id}
                 exercise={exercise}
                 onChange={updateExercise}
                 onRemove={removeExercise}
                 onToggle={toggleExercise}
+                onMoveUp={index > 0 ? () => handleMoveExercise(index, index - 1) : undefined}
+                onMoveDown={
+                  index < preset.exercises.length - 1
+                    ? () => handleMoveExercise(index, index + 1)
+                    : undefined
+                }
+                canMoveUp={index > 0}
+                canMoveDown={index < preset.exercises.length - 1}
               />
             ))
           )}
@@ -236,9 +252,12 @@ export default function MenuScreen() {
         onClose={() => setShowCreateMenuModal(false)}
         onCreate={handleCreateMenu}
       />
-      <Modal transparent animationType="fade" visible={showPresetPicker} onRequestClose={() => setShowPresetPicker(false)}>
-        <View style={styles.presetOverlay}>
-          <View style={styles.presetSheet}>
+      {showPresetPicker ? (
+        <Pressable style={styles.presetOverlay} onPress={() => setShowPresetPicker(false)} accessibilityRole="button">
+          <Pressable
+            style={styles.presetSheet}
+            onPress={event => event.stopPropagation()}
+            accessibilityRole="none">
             <Text style={styles.presetSheetTitle}>メニューを選択</Text>
             <ScrollView style={{ maxHeight: 360 }}>
               {presets.map(current => {
@@ -267,12 +286,12 @@ export default function MenuScreen() {
                 );
               })}
             </ScrollView>
-            <Pressable onPress={() => setShowPresetPicker(false)} style={styles.modalCloseButton}>
+            <Pressable onPress={() => setShowPresetPicker(false)} style={styles.modalCloseButton} accessibilityRole="button">
               <Text style={styles.modalCloseText}>閉じる</Text>
             </Pressable>
-          </View>
-        </View>
-      </Modal>
+          </Pressable>
+        </Pressable>
+      ) : null}
       {canAddExercises ? (
         <View
           pointerEvents="box-none"
@@ -341,19 +360,26 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spacing.mega * 2.5,
   },
   heroCard: {
-    borderRadius: 32,
+    borderRadius: 28,
     padding: tokens.spacing.lg,
     marginBottom: tokens.spacing.xl,
-    gap: tokens.spacing.lg,
+    gap: tokens.spacing.md,
     shadowColor: '#4c1d95',
     shadowOpacity: 0.3,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 18 },
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 14 },
   },
   heroHeader: {
     flexDirection: 'row',
-    gap: tokens.spacing.md,
+    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: tokens.spacing.md,
+  },
+  heroHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.md,
+    flex: 1,
   },
   heroIconContainer: {
     backgroundColor: 'rgba(255,255,255,0.18)',
@@ -384,15 +410,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spacing.md,
   },
-  heroActionGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spacing.sm,
-  },
-  heroFooter: {
-    alignItems: 'flex-end',
-    marginTop: tokens.spacing.md,
-  },
   heroChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -406,21 +423,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: tokens.typography.weightMedium,
   },
-  heroCta: {
-    backgroundColor: '#fff',
-    borderRadius: tokens.radii.full,
-    paddingHorizontal: tokens.spacing.lg,
-    paddingVertical: tokens.spacing.sm,
+  newMenuButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spacing.xs,
+    borderRadius: tokens.radii.full,
+    paddingHorizontal: tokens.spacing.lg,
+    paddingVertical: tokens.spacing.sm,
+    backgroundColor: 'rgba(168,85,247,0.12)',
+    alignSelf: 'flex-start',
     shadowColor: '#a855f7',
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
   },
-  heroCtaText: {
-    color: '#7c3aed',
+  newMenuText: {
+    color: tokens.palette.accentPurple,
     fontWeight: tokens.typography.weightSemiBold,
   },
   heroPowerButton: {
@@ -553,10 +571,11 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   presetOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     padding: tokens.spacing.lg,
+    zIndex: 10,
   },
   presetSheet: {
     backgroundColor: '#fff',
