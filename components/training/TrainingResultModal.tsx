@@ -58,7 +58,10 @@ export function TrainingResultModal({ visible, log, onClose }: TrainingResultMod
             <Text style={styles.resultTitle}>お疲れ様でした！</Text>
             <Text style={styles.resultSubtitle}>{presetNameOrDefault(log)}</Text>
           </LinearGradient>
-          <ScrollView contentContainerStyle={styles.resultContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.resultContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}>
             {pending ? (
               <View style={styles.pendingCard}>
                 <ActivityIndicator size="large" color={tokens.palette.accentOrange} />
@@ -101,10 +104,10 @@ export function TrainingResultModal({ visible, log, onClose }: TrainingResultMod
                 </View>
               </>
             )}
+            <Pressable onPress={onClose} style={styles.footerButton} accessibilityRole="button">
+              <Text style={styles.footerButtonText}>完了</Text>
+            </Pressable>
           </ScrollView>
-          <Pressable onPress={onClose} style={styles.footerButton} accessibilityRole="button">
-            <Text style={styles.footerButtonText}>完了</Text>
-          </Pressable>
         </View>
       </View>
     </Modal>
@@ -149,6 +152,7 @@ const styles = StyleSheet.create({
   resultContent: {
     padding: tokens.spacing.lg,
     gap: tokens.spacing.lg,
+    paddingBottom: tokens.spacing.xxl,
   },
   totalCard: {
     borderRadius: 24,
